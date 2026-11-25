@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>무드로그 (MoodLog) - 나만의 감성 기록</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: 명조체, 고딕체, 손글씨체 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            paper: {
+              light: 'var(--bg-paper)',
+              card: 'var(--bg-card)',
+              border: 'var(--border-color)',
+              dark: 'var(--bg-paper)',
+              darkCard: 'var(--bg-card)',
+              darkBorder: 'var(--border-color)'
+            },
+            mood: {
+              primary: 'var(--primary-color)',
+              primaryHover: 'var(--primary-hover)',
+              secondary: 'var(--secondary-color)',
+              text: 'var(--text-main)',
+              subtext: 'var(--text-sub)',
+              darkText: 'var(--text-main)',
+              darkSubtext: 'var(--text-sub)'
+            }
+          },
+          fontFamily: {
+            serif: ['"Gowun Batang"', 'serif'],
+            sans: ['"Noto Sans KR"', 'sans-serif'],
+            hand: ['"Nanum Pen Script"', 'cursive'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 8가지 뮤트 파스텔 테마 CSS 변수 정의 */
+    :root {
+      --bg-outer: #EAE5DC;
+      --bg-paper: #FBF8F1;
+      --bg-card: #FFFDF9;
+      --border-color: #EAE2D6;
+      --primary-color: #8C735B;
+      --primary-hover: #735D48;
+      --secondary-color: #B8A693;
+      --primary-soft: rgba(140, 115, 91, 0.12);
+      --text-main: #3D352E;
+      --text-sub: #857A6E;
+      --dot-color: rgba(140, 115, 91, 0.08);
+      --tape-color: rgba(226, 211, 189, 0.78);
+    }
+
+    /* 미세한 아날로그 종이 질감 노이즈 효과 */
+    .paper-texture {
+      background-color: var(--bg-paper);
+      background-image: radial-gradient(var(--dot-color) 1px, transparent 0),
+                        radial-gradient(var(--dot-color) 1px, transparent 0);
+      background-size: 24px 24px;
+      background-position: 0 0, 12px 12px;
+      transition: background-color 0.35s ease, color 0.35s ease;
+    }
+
+    /* 커스텀 스크롤바 숨김 및 부드러운 스크롤 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 폴라로이드 프레임 & 마스킹 테이프 디자인 */
+    .polaroid-card {
+      background: #FFFFFF;
+      padding: 12px 12px 24px 12px;
+      box-shadow: 0 8px 20px rgba(61, 53, 46, 0.12), 0 2px 6px rgba(61, 53, 46, 0.06);
+      transform: rotate(-1.5deg);
+      transition: transform 0.3s ease;
+      position: relative;
+    }
+    .dark .polaroid-card {
+      background: #2C3039;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+    .polaroid-card:hover {
+      transform: rotate(0deg) scale(1.01);
+    }
+    .masking-tape {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%) rotate(2deg);
+      width: 96px;
+      height: 26px;
+      background-color: var(--tape-color);
+      border-left: 2px dashed rgba(255, 255, 255, 0.4);
+      border-right: 2px dashed rgba(255, 255, 255, 0.4);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      z-index: 10;
+    }
+
+    /* 탭 전환 페이드 애니메이션 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.28s ease-out forwards;
+    }
+
+    /* LP 레코드 회전 애니메이션 */
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spinSlow 8s linear infinite;
+    }
+    .animate-spin-paused {
+      animation: spinSlow 8s linear infinite;
+      animation-play-state: paused;
+    }
+
+    /* 폰트 클래스 유틸 */
+    .font-style-serif { font-family: 'Gowun Batang', serif; }
+    .font-style-sans { font-family: 'Noto Sans KR', sans-serif; }
+    .font-style-hand { font-family: 'Nanum Pen Script', cursive; font-size: 1.35rem; line-height: 1.65; }
+  </style>
+</head>
+<body style="background-color: var(--bg-outer);" class="text-mood-text font-sans antialiased selection:bg-mood-primary/20 transition-colors duration-300 flex justify-center min-h-screen">
+
+  <!-- 앱 메인 컨테이너 (PC에서는 스마트폰 프레임처럼 중앙 배치, 모바일에서는 100% 꽉 차게) -->
+  <div id="app-frame" class="w-full max-w-[440px] min-h-screen sm:min-h-[840px] sm:my-6 sm:rounded-[38px] sm:border-[8px] sm:border-[#3A3530] dark:sm:border-[#2A2D35] sm:shadow-2xl paper-texture relative flex flex-col overflow-hidden">
+
+    <!-- 1. 잠금 화면 (PIN 설정 시 활성화) -->
+    <div id="lock-screen" class="hidden absolute inset-0 z-50 paper-texture flex flex-col items-center justify-between py-14 px-8">
+      <div class="text-center mt-6">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-mood-primary/10 dark:bg-mood-primary/20 flex items-center justify-center text-mood-primary">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="font-serif text-2xl font-bold tracking-tight">무드로그</h2>
+        <p id="lock-subtitle" class="text-xs text-mood-subtext dark:text-mood-darkSubtext mt-1.5">나만의 기록을 열기 위해 비밀번호를 입력하세요</p>
+      </div>
+
+      <!-- PIN 점 표시 -->
+      <div class="flex gap-4 my-6" id="pin-dots">
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-mood-primary transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-mood-primary transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-mood-primary transition-all duration-200"></span>
+        <span class="w-3.5 h-3.5 rounded-full border-2 border-mood-primary transition-all duration-200"></span>
+      </div>
+
+      <!-- PIN 숫자 키패드 -->
+      <div class="grid grid-cols-3 gap-3.5 w-full max-w-[260px] mb-4">
+        <button type="button" onclick="pressPin('1')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">1</button>
+        <button type="button" onclick="pressPin('2')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">2</button>
+        <button type="button" onclick="pressPin('3')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">3</button>
+        <button type="button" onclick="pressPin('4')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">4</button>
+        <button type="button" onclick="pressPin('5')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">5</button>
+        <button type="button" onclick="pressPin('6')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">6</button>
+        <button type="button" onclick="pressPin('7')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">7</button>
+        <button type="button" onclick="pressPin('8')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">8</button>
+        <button type="button" onclick="pressPin('9')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">9</button>
+        <button type="button" id="pin-cancel-btn" onclick="cancelPinSetup()" class="h-14 rounded-2xl text-xs font-medium text-mood-subtext hover:text-mood-text transition">취소</button>
+        <button type="button" onclick="pressPin('0')" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-lg font-bold hover:bg-mood-primary/10 active:scale-95 transition">0</button>
+        <button type="button" onclick="deletePin()" class="h-14 rounded-2xl bg-paper-card border border-paper-border text-sm font-semibold text-mood-subtext hover:bg-mood-primary/10 active:scale-95 transition">←</button>
+      </div>
+    </div>
+
+    <!-- 상단 헤더 & 뮤트 컬러 테마 팝오버 -->
+    <header class="px-5 pt-5 pb-3 flex items-center justify-between border-b border-paper-border/60 relative z-30 shrink-0">
+      <div class="flex items-center gap-2">
+        <h1 class="font-serif text-xl font-bold tracking-tight">무드로그</h1>
+        <span id="edit-mode-badge" class="hidden text-[10px] font-semibold px-2 py-0.5 rounded-full bg-mood-primary/15 text-mood-primary">수정 중</span>
+      </div>
+
+      <button type="button" id="header-palette-btn" onclick="toggleThemePopover()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-paper-card border border-paper-border shadow-2xs hover:bg-mood-primary/5 transition">
+        <span id="header-theme-dot" class="w-3 h-3 rounded-full border border-black/15" style="background-color: #8C735B;"></span>
+        <span id="header-theme-name" class="text-[11px] font-medium">웜 아이보리</span>
+      </button>
+
+      <!-- 뮤트 테마 선택 팝오버 -->
+      <div id="theme-popover" class="hidden absolute right-5 top-14 w-64 p-3 rounded-2xl bg-paper-card border border-paper-border shadow-xl z-40 animate-fade-in">
+        <p class="text-[11px] font-semibold text-mood-subtext mb-2 px-1">감성 컬러 테마 선택</p>
+        <div id="popover-theme-grid" class="grid grid-cols-1 gap-1.5">
+          <!-- JS 동적 렌더링 -->
+        </div>
+      </div>
+    </header>
+
+    <!-- 스크롤 가능한 메인 콘텐츠 영역 -->
+    <main id="main-content" class="flex-1 overflow-y-auto no-scrollbar pb-24">
+
+      <!-- ========================================== -->
+      <!-- TAB 1: 감성 일기 에디터                       -->
+      <!-- ========================================== -->
+      <section id="tab-editor" class="p-5 animate-fade-in">
+        <!-- 상단 무드 배너 -->
+        <div id="mood-banner" class="relative rounded-2xl p-4 mb-5 overflow-hidden border border-paper-border transition-all duration-500">
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1.5">
+                <input type="date" id="entry-date" onchange="autoSaveDraft()" class="bg-white/70 dark:bg-black/25 px-2.5 py-1 rounded-lg text-xs font-serif font-bold border border-paper-border/70 focus:outline-none" />
+              </div>
+              <p id="banner-mood-tag" class="text-xs text-mood-text/85 font-medium truncate">따스한 햇살이 비추는 행복한 하루</p>
+            </div>
+            <div id="banner-illustration" class="w-12 h-12 shrink-0"></div>
+          </div>
+        </div>
+
+        <!-- 오늘의 날씨 선택 (6종) -->
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-mood-subtext dark:text-mood-darkSubtext mb-2">오늘의 날씨를 선택해주세요</label>
+          <div id="mood-selector-grid" class="grid grid-cols-6 gap-1.5">
+            <!-- JS에서 동적 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 오늘의 기분 선택 (8종 감정 칩 + 직접 입력) -->
+        <div class="mb-5 p-3.5 rounded-2xl bg-paper-card/85 dark:bg-paper-darkCard/85 border border-paper-border dark:border-paper-darkBorder">
+          <div class="flex items-center justify-between mb-2.5">
+            <label class="text-xs font-semibold text-mood-text dark:text-mood-darkText flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-mood-primary"></span>
+              오늘의 기분은 어떤가요?
+            </label>
+            <span id="selected-feeling-badge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-mood-primary/10 text-mood-primary">행복해요</span>
+          </div>
+          <div id="feeling-selector-grid" class="grid grid-cols-4 gap-1.5 mb-2.5">
+            <!-- JS에서 8종 감정 칩 렌더링 -->
+          </div>
+          <div class="relative">
+            <input type="text" id="custom-feeling-input" maxlength="16" placeholder="또는 나만의 기분 단어를 직접 적어보세요 (예: 몽글몽글함)" oninput="handleCustomFeelingInput(this.value)"
+              class="w-full px-3 py-1.5 rounded-xl bg-paper-light/70 dark:bg-paper-dark/50 border border-paper-border/80 dark:border-paper-darkBorder/80 text-xs focus:outline-none focus:border-mood-primary transition placeholder:text-mood-subtext/60" />
+          </div>
+        </div>
+
+        <!-- 오늘 들은 음악 (Melon 검색 연동) -->
+        <div class="mb-5 p-3.5 rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder shadow-2xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-semibold flex items-center gap-1.5">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00CD3C]/15 text-[#00A832] dark:text-[#2CE661] text-[10px] font-bold tracking-tight">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#00CD3C]"></span>Melon 연동
+              </span>
+              <span>오늘 들은 음악</span>
+            </span>
+            <a id="melon-direct-link" href="https://www.melon.com/search/total/index.htm?q=" target="_blank" rel="noopener noreferrer"
+              class="text-[11px] text-[#00A832] dark:text-[#2CE661] hover:underline font-medium flex items-center gap-0.5">
+              멜론에서 직접 검색 ↗
+            </a>
+          </div>
+
+          <!-- 음악 검색 입력창 -->
+          <div id="music-search-box">
+            <div class="relative">
+              <input type="text" id="music-search-input" placeholder="곡명이나 아티스트를 검색하세요 (예: 아이유, 데이식스, 잔나비)..."
+                oninput="handleMusicSearchInput(this.value)"
+                class="w-full pl-9 pr-8 py-2 rounded-xl bg-paper-light/80 dark:bg-paper-dark/60 border border-paper-border dark:border-paper-darkBorder text-xs focus:outline-none focus:border-[#00CD3C] transition placeholder:text-mood-subtext/60" />
+              <svg class="w-4 h-4 text-mood-subtext absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+              <button type="button" id="clear-music-search-btn" onclick="clearMusicSearch()" class="hidden absolute right-2.5 top-2 text-mood-subtext hover:text-mood-text text-xs p-0.5">✕</button>
+            </div>
+
+            <!-- 검색 결과 드롭다운 리스트 -->
+            <div id="music-search-results" class="hidden mt-2 max-h-52 overflow-y-auto no-scrollbar rounded-xl border border-paper-border dark:border-paper-darkBorder bg-paper-light/95 dark:bg-paper-dark/95 divide-y divide-paper-border/50 dark:divide-paper-darkBorder/50">
+              <!-- JS에서 검색 결과 렌더링 -->
+            </div>
+          </div>
+
+          <!-- 선택된 음악 미니 LP 플레이어 카드 -->
+          <div id="selected-music-card" class="hidden mt-2 p-3 rounded-xl bg-gradient-to-r from-[#00CD3C]/8 via-paper-light/80 to-paper-light/80 dark:from-[#00CD3C]/12 dark:via-paper-dark/70 dark:to-paper-dark/70 border border-[#00CD3C]/30 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <!-- 회전하는 LP/앨범 아트 -->
+              <div class="relative w-12 h-12 shrink-0">
+                <div id="editor-vinyl-disc" class="w-12 h-12 rounded-full overflow-hidden border-2 border-[#2A2D35] shadow-md animate-spin-paused bg-[#1F2229] flex items-center justify-center">
+                  <img id="selected-music-cover" src="" alt="앨범 커버" class="w-full h-full object-cover" />
+                </div>
+                <span class="absolute inset-0 m-auto w-3 h-3 rounded-full bg-paper-card border border-gray-400"></span>
+              </div>
+              <div class="min-w-0">
+                <p id="selected-music-title" class="text-xs font-bold truncate"></p>
+                <p id="selected-music-artist" class="text-[11px] text-mood-subtext truncate mt-0.5"></p>
+                <div class="flex items-center gap-2 mt-1">
+                  <button type="button" id="editor-audio-toggle-btn" onclick="toggleEditorMusicPreview()" class="hidden text-[10px] px-2 py-0.5 rounded-full bg-mood-primary/15 text-mood-primary font-semibold hover:bg-mood-primary/25 transition">
+                    ▶ 30초 미리듣기
+                  </button>
+                  <a id="selected-music-melon-link" href="#" target="_blank" rel="noopener noreferrer" class="text-[10px] px-2 py-0.5 rounded-full bg-[#00CD3C]/15 text-[#00A832] dark:text-[#2CE661] font-semibold hover:bg-[#00CD3C]/25 transition">
+                    멜론에서 듣기 ↗
+                  </a>
+                </div>
+              </div>
+            </div>
+            <button type="button" onclick="removeSelectedMusic()" class="p-1.5 rounded-lg text-mood-subtext hover:text-rose-500 hover:bg-rose-500/10 transition shrink-0" title="음악 제거">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 오늘의 질문 큐레이션 카드 -->
+        <div class="mb-5 p-3.5 rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder shadow-sm">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-semibold text-mood-primary flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              오늘의 글감 질문
+            </span>
+            <div class="flex items-center gap-2">
+              <button onclick="insertQuestionToBody()" class="text-[11px] px-2 py-0.5 rounded-md bg-mood-primary/10 text-mood-primary hover:bg-mood-primary/20 transition">본문에 넣기</button>
+              <button onclick="nextRandomQuestion()" class="text-[11px] text-mood-subtext hover:text-mood-text dark:hover:text-white transition flex items-center gap-0.5" title="다른 질문 보기">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              </button>
+            </div>
+          </div>
+          <p id="daily-question-text" class="font-serif text-xs leading-relaxed text-mood-text/90 dark:text-mood-darkText/90"></p>
+        </div>
+
+        <!-- 에디터 툴바 (폰트 스타일, 정렬, 사진 첨부) -->
+        <div class="flex items-center justify-between px-3 py-2 mb-3 rounded-xl bg-paper-card/80 dark:bg-paper-darkCard/80 border border-paper-border dark:border-paper-darkBorder">
+          <div class="flex items-center gap-1">
+            <button onclick="setEditorFont('serif')" id="btn-font-serif" class="px-2 py-1 rounded-lg text-xs font-serif font-bold bg-mood-primary text-white transition">명조</button>
+            <button onclick="setEditorFont('sans')" id="btn-font-sans" class="px-2 py-1 rounded-lg text-xs font-sans text-mood-subtext hover:bg-mood-primary/10 transition">고딕</button>
+            <button onclick="setEditorFont('hand')" id="btn-font-hand" class="px-2 py-1 rounded-lg text-sm font-hand text-mood-subtext hover:bg-mood-primary/10 transition">손글씨</button>
+          </div>
+          <div class="flex items-center gap-1 border-l border-paper-border dark:border-paper-darkBorder pl-2">
+            <button onclick="setEditorAlign('left')" id="btn-align-left" class="p-1.5 rounded-lg bg-mood-primary/15 text-mood-primary transition" title="좌측 정렬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h10M4 18h14"/></svg>
+            </button>
+            <button onclick="setEditorAlign('center')" id="btn-align-center" class="p-1.5 rounded-lg text-mood-subtext hover:bg-mood-primary/10 transition" title="가운데 정렬">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M7 12h10M5 18h14"/></svg>
+            </button>
+            <label class="p-1.5 rounded-lg text-mood-subtext hover:bg-mood-primary/10 hover:text-mood-primary cursor-pointer transition ml-1" title="폴라로이드 사진 첨부">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)" />
+            </label>
+          </div>
+        </div>
+
+        <!-- 일기 작성 종이 카드 -->
+        <div class="rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder p-5 shadow-sm">
+          <input type="text" id="entry-title" placeholder="오늘의 제목을 적어보세요..." oninput="autoSaveDraft()" class="w-full bg-transparent font-style-serif text-lg font-bold border-b border-paper-border/60 dark:border-paper-darkBorder/60 pb-2.5 mb-3 focus:outline-none placeholder:text-mood-subtext/50" />
+          
+          <textarea id="entry-content" rows="7" placeholder="오늘 하루, 어떤 순간이 마음에 남았나요? 조용히 기록해보세요..." oninput="autoSaveDraft()" class="w-full bg-transparent font-style-serif text-[15px] leading-relaxed resize-none focus:outline-none placeholder:text-mood-subtext/50"></textarea>
+
+          <!-- 폴라로이드 사진 미리보기 영역 -->
+          <div id="polaroid-preview-wrapper" class="hidden mt-5 mb-2 flex flex-col items-center">
+            <div class="polaroid-card w-64">
+              <div class="masking-tape"></div>
+              <button onclick="removePhoto()" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow hover:bg-red-600 z-20" title="사진 삭제">✕</button>
+              <div class="w-full aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden mb-2.5">
+                <img id="polaroid-img" src="" alt="첨부 사진" class="w-full h-full object-cover" />
+              </div>
+              <input type="text" id="polaroid-caption" placeholder="사진 아래 짧은 한 줄..." oninput="autoSaveDraft()" class="w-full text-center font-hand text-lg bg-transparent text-gray-700 dark:text-gray-200 focus:outline-none placeholder:text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 저장 상태 및 저장 버튼 -->
+        <div class="mt-4 flex items-center justify-between gap-3">
+          <span id="draft-status" class="text-[11px] text-mood-subtext dark:text-mood-darkSubtext">자동 임시저장 대기 중</span>
+          <button onclick="saveDiaryEntry()" class="px-6 py-3 rounded-2xl bg-mood-primary hover:bg-mood-primaryHover text-white font-medium text-sm shadow-md shadow-mood-primary/20 active:scale-95 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            <span id="save-btn-text">기록 저장하기</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 2: 월간 감정 캘린더                       -->
+      <!-- ========================================== -->
+      <section id="tab-calendar" class="hidden p-5 animate-fade-in">
+        <!-- 월 이동 헤더 -->
+        <div class="flex items-center justify-between mb-5 bg-paper-card dark:bg-paper-darkCard p-3.5 rounded-2xl border border-paper-border dark:border-paper-darkBorder">
+          <button onclick="changeCalendarMonth(-1)" class="p-2 rounded-xl hover:bg-mood-primary/10 text-mood-subtext transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="text-center">
+            <h2 id="calendar-month-title" class="font-serif text-lg font-bold">2026년 11월</h2>
+            <p id="calendar-month-summary" class="text-[11px] text-mood-subtext dark:text-mood-darkSubtext mt-0.5">이번 달 0개의 감정이 기록되었어요</p>
+          </div>
+          <button onclick="changeCalendarMonth(1)" class="p-2 rounded-xl hover:bg-mood-primary/10 text-mood-subtext transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+
+        <!-- 달력 그리드 카드 -->
+        <div class="bg-paper-card dark:bg-paper-darkCard rounded-2xl p-4 border border-paper-border dark:border-paper-darkBorder shadow-sm">
+          <!-- 요일 헤더 -->
+          <div class="grid grid-cols-7 text-center text-xs font-medium text-mood-subtext dark:text-mood-darkSubtext pb-3 border-b border-paper-border/50 dark:border-paper-darkBorder/50">
+            <span class="text-rose-400">일</span>
+            <span>월</span>
+            <span>화</span>
+            <span>수</span>
+            <span>목</span>
+            <span>금</span>
+            <span class="text-sky-400">토</span>
+          </div>
+          <!-- 날짜 셀 컨테이너 -->
+          <div id="calendar-grid" class="grid grid-cols-7 gap-y-2.5 gap-x-1 pt-3 text-center">
+            <!-- JS 동적 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 감정 범례 안내 -->
+        <div class="mt-4 p-3.5 rounded-2xl bg-paper-card/60 dark:bg-paper-darkCard/60 border border-paper-border/60 dark:border-paper-darkBorder/60">
+          <p class="text-[11px] text-mood-subtext dark:text-mood-darkSubtext mb-2">감정 아이콘을 누르면 그날의 일기를 다시 볼 수 있어요.</p>
+          <div id="calendar-legend" class="flex flex-wrap gap-2"></div>
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 3: 타임라인 피드 & 검색                    -->
+      <!-- ========================================== -->
+      <section id="tab-timeline" class="hidden p-5 animate-fade-in">
+        <!-- 검색창 -->
+        <div class="relative mb-3">
+          <input type="text" id="search-input" placeholder="제목, 내용, 기분, 곡명, 아티스트 검색..." oninput="renderTimeline()" class="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder text-sm focus:outline-none focus:border-mood-primary transition" />
+          <svg class="w-4 h-4 text-mood-subtext absolute left-3.5 top-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+
+        <!-- 기분별 필터링 칩 -->
+        <div id="timeline-filter-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-3 mb-2">
+          <!-- JS 동적 렌더링 -->
+        </div>
+
+        <!-- 일기 피드 리스트 -->
+        <div id="timeline-list" class="space-y-4">
+          <!-- JS 동적 렌더링 -->
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- TAB 4: 설정 및 백업 (프라이버시)               -->
+      <!-- ========================================== -->
+      <section id="tab-settings" class="hidden p-5 animate-fade-in space-y-4">
+        <h2 class="font-serif text-lg font-bold mb-1">설정 및 보관함 관리</h2>
+        <p class="text-xs text-mood-subtext dark:text-mood-darkSubtext mb-4">모든 일기는 외부 서버가 아닌 현재 브라우저에만 안전하게 보관됩니다.</p>
+
+        <!-- 프라이버시 잠금 설정 카드 -->
+        <div class="p-4 rounded-2xl bg-paper-card border border-paper-border">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-mood-primary/10 text-mood-primary flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold">암호 잠금 (4자리 PIN)</h3>
+                <p id="pin-status-text" class="text-xs text-mood-subtext">현재 잠금이 해제되어 있습니다</p>
+              </div>
+            </div>
+            <button id="toggle-pin-btn" onclick="handlePinSettingClick()" class="px-3.5 py-1.5 rounded-xl bg-mood-primary text-white text-xs font-medium active:scale-95 transition">설정하기</button>
+          </div>
+        </div>
+
+        <!-- 감성 컬러 테마 설정 카드 (8종 뮤트 파스텔 팔레트) -->
+        <div class="p-4 rounded-2xl bg-paper-card border border-paper-border space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-mood-primary/10 text-mood-primary flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold">뮤트 감성 컬러 테마</h3>
+                <p id="settings-theme-desc" class="text-xs text-mood-subtext">차분한 미색 종이와 웜 브라운 감성</p>
+              </div>
+            </div>
+          </div>
+          <div id="settings-theme-grid" class="grid grid-cols-2 gap-2 pt-1">
+            <!-- JS에서 8종 테마 카드 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 데이터 백업 및 복원 카드 -->
+        <div class="p-4 rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder space-y-3">
+          <div class="flex items-center gap-3 mb-1">
+            <div class="w-10 h-10 rounded-xl bg-mood-primary/10 text-mood-primary flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold">일기 데이터 백업 및 복원</h3>
+              <p class="text-xs text-mood-subtext dark:text-mood-darkSubtext">JSON 파일로 소중한 기록을 내보내거나 불러옵니다</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-2.5 pt-1">
+            <button onclick="exportDiaryJSON()" class="py-2.5 px-3 rounded-xl bg-mood-primary/10 hover:bg-mood-primary/20 text-mood-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              JSON 내보내기
+            </button>
+            <label class="py-2.5 px-3 rounded-xl border border-paper-border dark:border-paper-darkBorder hover:bg-mood-primary/10 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              JSON 불러오기
+              <input type="file" accept=".json" class="hidden" onchange="importDiaryJSON(event)" />
+            </label>
+          </div>
+        </div>
+
+        <!-- 저장 용량 통계 -->
+        <div class="p-4 rounded-2xl bg-paper-card/60 dark:bg-paper-darkCard/60 border border-paper-border/60 dark:border-paper-darkBorder/60 flex items-center justify-between text-xs text-mood-subtext dark:text-mood-darkSubtext">
+          <span>저장된 일기 수: <strong id="stats-count" class="text-mood-text dark:text-mood-darkText">0개</strong></span>
+          <span>브라우저 사용 용량: <strong id="stats-storage" class="text-mood-text dark:text-mood-darkText">0 KB</strong></span>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 하단 내비게이션 바 -->
+    <nav class="absolute bottom-0 inset-x-0 bg-paper-card/95 dark:bg-paper-darkCard/95 backdrop-blur-md border-t border-paper-border dark:border-paper-darkBorder px-4 py-2 flex justify-around items-center z-20">
+      <button onclick="switchTab('editor')" id="nav-editor" class="nav-btn flex flex-col items-center py-1 px-3 rounded-xl text-mood-primary transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        <span class="text-[10px] font-semibold">기록하기</span>
+      </button>
+      <button onclick="switchTab('calendar')" id="nav-calendar" class="nav-btn flex flex-col items-center py-1 px-3 rounded-xl text-mood-subtext dark:text-mood-darkSubtext hover:text-mood-primary transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span class="text-[10px] font-medium">캘린더</span>
+      </button>
+      <button onclick="switchTab('timeline')" id="nav-timeline" class="nav-btn flex flex-col items-center py-1 px-3 rounded-xl text-mood-subtext dark:text-mood-darkSubtext hover:text-mood-primary transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span class="text-[10px] font-medium">타임라인</span>
+      </button>
+      <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center py-1 px-3 rounded-xl text-mood-subtext dark:text-mood-darkSubtext hover:text-mood-primary transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-[10px] font-medium">설정</span>
+      </button>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- 일기 상세 보기 모달                           -->
+    <!-- ========================================== -->
+    <div id="detail-modal" class="hidden absolute inset-0 z-40 bg-black/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div class="w-full max-h-[88%] rounded-t-3xl sm:rounded-3xl paper-texture border border-paper-border dark:border-paper-darkBorder shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+        <!-- 모달 상단 바 -->
+        <div class="px-5 py-4 border-b border-paper-border/70 dark:border-paper-darkBorder/70 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span id="modal-mood-icon" class="w-8 h-8 flex items-center justify-center"></span>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <p id="modal-date" class="text-xs font-serif font-bold"></p>
+                <span id="modal-feeling-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-mood-primary/15 text-mood-primary"></span>
+              </div>
+              <p id="modal-mood-label" class="text-[11px] text-mood-subtext mt-0.5"></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="modal-edit-btn" class="px-3 py-1.5 rounded-xl bg-mood-primary/10 text-mood-primary text-xs font-medium hover:bg-mood-primary/20 transition">수정</button>
+            <button id="modal-delete-btn" class="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-500 text-xs font-medium hover:bg-rose-500/20 transition">삭제</button>
+            <button onclick="closeDetailModal()" class="p-1.5 rounded-xl text-mood-subtext hover:bg-black/5 dark:hover:bg-white/5 ml-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- 모달 본문 -->
+        <div class="p-6 overflow-y-auto no-scrollbar space-y-4">
+          <h3 id="modal-title" class="text-xl font-bold leading-snug"></h3>
+
+          <!-- 상세 모달 내 오늘의 음악 카드 -->
+          <div id="modal-music-area" class="hidden p-3 rounded-2xl bg-gradient-to-r from-[#00CD3C]/10 via-paper-card to-paper-card border border-[#00CD3C]/30 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="relative w-11 h-11 shrink-0">
+                <div id="modal-vinyl-disc" class="w-11 h-11 rounded-full overflow-hidden border-2 border-[#2A2D35] shadow-sm animate-spin-paused bg-[#1F2229]">
+                  <img id="modal-music-cover" src="" alt="앨범 커버" class="w-full h-full object-cover" />
+                </div>
+                <span class="absolute inset-0 m-auto w-2.5 h-2.5 rounded-full bg-paper-card border border-gray-400"></span>
+              </div>
+              <div class="min-w-0">
+                <span class="text-[10px] font-bold text-[#00A832] dark:text-[#2CE661] block">TODAY'S BGM</span>
+                <p id="modal-music-title" class="text-xs font-bold truncate"></p>
+                <p id="modal-music-artist" class="text-[11px] text-mood-subtext truncate"></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" id="modal-audio-toggle-btn" onclick="toggleModalMusicPreview()" class="hidden px-2.5 py-1.5 rounded-xl bg-mood-primary/15 text-mood-primary text-[11px] font-semibold hover:bg-mood-primary/25 transition">
+                ▶ 듣기
+              </button>
+              <a id="modal-music-melon-link" href="#" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1.5 rounded-xl bg-[#00CD3C]/15 text-[#00A832] dark:text-[#2CE661] text-[11px] font-bold hover:bg-[#00CD3C]/25 transition">
+                Melon ↗
+              </a>
+            </div>
+          </div>
+
+          <p id="modal-content" class="whitespace-pre-wrap leading-relaxed text-[15px] text-mood-text/90 dark:text-mood-darkText/90"></p>
+          <div id="modal-photo-area" class="hidden pt-4 pb-2 flex justify-center">
+            <div class="polaroid-card w-64">
+              <div class="masking-tape"></div>
+              <div class="w-full aspect-square bg-gray-100 overflow-hidden mb-2.5">
+                <img id="modal-img" src="" alt="일기 사진" class="w-full h-full object-cover" />
+              </div>
+              <p id="modal-caption" class="text-center font-hand text-lg text-gray-700 dark:text-gray-200"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 커스텀 확인/알림 모달 & 토스트 메시지           -->
+    <!-- ========================================== -->
+    <div id="confirm-modal" class="hidden absolute inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6">
+      <div class="w-full max-w-[320px] rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder p-5 shadow-xl text-center animate-fade-in">
+        <h4 id="confirm-title" class="font-serif font-bold text-base mb-1.5">알림</h4>
+        <p id="confirm-desc" class="text-xs text-mood-subtext dark:text-mood-darkSubtext mb-5 leading-relaxed"></p>
+        <div class="flex gap-2">
+          <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-xl border border-paper-border dark:border-paper-darkBorder text-xs font-medium">취소</button>
+          <button id="confirm-ok-btn" class="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-xs font-medium">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="pointer-events-none opacity-0 transition-all duration-300 fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-[#3D352E] dark:bg-[#E6E2DC] text-white dark:text-[#191B20] text-xs font-medium shadow-lg whitespace-nowrap">
+      메시지
+    </div>
+
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 애플리케이션 JavaScript 로직                 -->
+  <!-- ========================================== -->
+  <script>
+    /**
+     * 1. 상수 및 감정 메타데이터 정의
+     */
+    const STORAGE_KEYS = {
+      ENTRIES: 'moodlog_entries_v1',
+      SETTINGS: 'moodlog_settings_v1',
+      DRAFT: 'moodlog_draft_v2'
+    };
+
+    const FEELINGS = [
+      {
+        id: 'happy',
+        label: '행복해요',
+        dotColor: '#E6B84C',
+        badgeBg: 'bg-[#FFF3D6] dark:bg-[#3D3422] text-[#9E7822] dark:text-[#F2CE74]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M8.5 14.5c1 1.5 2.2 2 3.5 2s2.5-.5 3.5-2"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>`
+      },
+      {
+        id: 'calm',
+        label: '평온해요',
+        dotColor: '#759473',
+        badgeBg: 'bg-[#E6F2E5] dark:bg-[#233322] text-[#4C6E4A] dark:text-[#9EC49B]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M9 15h6"/><path stroke-linecap="round" d="M8 10.5c.6-.7 1.4-.7 2 0M14 10.5c.6-.7 1.4-.7 2 0"/></svg>`
+      },
+      {
+        id: 'excited',
+        label: '설레요',
+        dotColor: '#C4849C',
+        badgeBg: 'bg-[#FAE8EF] dark:bg-[#38232C] text-[#9E5672] dark:text-[#E6A3BD]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.5s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10.5c0 5.5-7 10-7 10z"/></svg>`
+      },
+      {
+        id: 'proud',
+        label: '뿌듯해요',
+        dotColor: '#D99B52',
+        badgeBg: 'bg-[#FBEEDC] dark:bg-[#3A2E1F] text-[#9E6A2B] dark:text-[#EBB97A]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l2.6 5.3 5.9.8-4.2 4.1 1 5.8L12 16.3 6.7 19l1-5.8-4.2-4.1 5.9-.8L12 3z"/></svg>`
+      },
+      {
+        id: 'lazy',
+        label: '나른해요',
+        dotColor: '#9C8BB8',
+        badgeBg: 'bg-[#EFEBF7] dark:bg-[#2C2638] text-[#6D5B8A] dark:text-[#C1B2DB]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 14.5A8.5 8.5 0 019.5 4a7 7 0 1010.5 10.5z"/></svg>`
+      },
+      {
+        id: 'blue',
+        label: '우울해요',
+        dotColor: '#6D8EA6',
+        badgeBg: 'bg-[#E5EFF5] dark:bg-[#212E38] text-[#4B6C85] dark:text-[#98B9D1]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M8.5 16c1-1.3 2.2-1.8 3.5-1.8s2.5.5 3.5 1.8"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>`
+      },
+      {
+        id: 'tired',
+        label: '지쳤어요',
+        dotColor: '#8C857B',
+        badgeBg: 'bg-[#ECEAE6] dark:bg-[#2B2A27] text-[#635D54] dark:text-[#B8B2A8]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M8 10h2.5M13.5 10H16M9.5 15.5h5"/></svg>`
+      },
+      {
+        id: 'upset',
+        label: '속상해요',
+        dotColor: '#C97A73',
+        badgeBg: 'bg-[#F8E6E4] dark:bg-[#382321] text-[#994F48] dark:text-[#E39B94]',
+        svg: `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M8 9.5l2.5 1M16 9.5l-2.5 1M9 16c1-1 2-1.5 3-1.5s2 .5 3 1.5"/></svg>`
+      }
+    ];
+
+    // 오프라인/API 제한 시에도 즉시 검색되는 한국 감성 곡 큐레이션 DB
+    const FALLBACK_SONGS = [
+      { id: 'fb-1', title: '밤편지 (Through the Night)', artist: '아이유 (IU)', album: '밤편지', coverColor: '#3B4861', previewUrl: '' },
+      { id: 'fb-2', title: '한 페이지가 될 수 있게', artist: 'DAY6 (데이식스)', album: 'The Book of Us : Gravity', coverColor: '#5B84A6', previewUrl: '' },
+      { id: 'fb-3', title: '예뻤어 (You Were Beautiful)', artist: 'DAY6 (데이식스)', album: 'Every DAY6 February', coverColor: '#7E6E8A', previewUrl: '' },
+      { id: 'fb-4', title: '주저하는 연인들을 위해', artist: '잔나비', album: '전설', coverColor: '#A67B5B', previewUrl: '' },
+      { id: 'fb-5', title: 'EVERYTHING', artist: '검정치마', album: 'TEAM BABY', coverColor: '#4A5D4E', previewUrl: '' },
+      { id: 'fb-6', title: 'Square (2017)', artist: '백예린 (Yerin Baek)', album: 'Every letter I sent you.', coverColor: '#7A9972', previewUrl: '' },
+      { id: 'fb-7', title: '너의 모든 순간', artist: '성시경', album: '별에서 온 그대 OST', coverColor: '#8C735B', previewUrl: '' },
+      { id: 'fb-8', title: '신호등', artist: '이무진', album: '신호등', coverColor: '#C29B48', previewUrl: '' },
+      { id: 'fb-9', title: 'Ditto', artist: 'NewJeans (뉴진스)', album: 'OMG', coverColor: '#6D8EA6', previewUrl: '' },
+      { id: 'fb-10', title: '사건의 지평선', artist: '윤하 (YOUNHA)', album: 'END THEORY', coverColor: '#58627A', previewUrl: '' },
+      { id: 'fb-11', title: 'Love wins all', artist: '아이유 (IU)', album: 'The Winning', coverColor: '#B87A82', previewUrl: '' },
+      { id: 'fb-12', title: '소우주 (Mikrokosmos)', artist: '방탄소년단 (BTS)', album: 'MAP OF THE SOUL : PERSONA', coverColor: '#8C7BA6', previewUrl: '' }
+    ];
+
+    const THEMES = [
+      {
+        id: 'ivory',
+        name: '웜 아이보리',
+        desc: '차분한 미색 종이와 웜 브라운 감성',
+        isDark: false,
+        swatchBg: '#FBF8F1',
+        swatchPrimary: '#8C735B',
+        vars: {
+          '--bg-outer': '#EAE5DC',
+          '--bg-paper': '#FBF8F1',
+          '--bg-card': '#FFFDF9',
+          '--border-color': '#EAE2D6',
+          '--primary-color': '#8C735B',
+          '--primary-hover': '#735D48',
+          '--secondary-color': '#B8A693',
+          '--text-main': '#3D352E',
+          '--text-sub': '#857A6E',
+          '--dot-color': 'rgba(140, 115, 91, 0.08)',
+          '--tape-color': 'rgba(226, 211, 189, 0.78)'
+        }
+      },
+      {
+        id: 'rose',
+        name: '뮤트 로즈 핑크',
+        desc: '차분한 말린 장미와 톤다운 핑크 무드',
+        isDark: false,
+        swatchBg: '#FAF3F3',
+        swatchPrimary: '#B87A82',
+        vars: {
+          '--bg-outer': '#EAE0E1',
+          '--bg-paper': '#FAF3F3',
+          '--bg-card': '#FFF9FA',
+          '--border-color': '#EDDADC',
+          '--primary-color': '#B87A82',
+          '--primary-hover': '#9E626A',
+          '--secondary-color': '#D4A5AB',
+          '--text-main': '#453336',
+          '--text-sub': '#8F7579',
+          '--dot-color': 'rgba(184, 122, 130, 0.09)',
+          '--tape-color': 'rgba(232, 195, 200, 0.78)'
+        }
+      },
+      {
+        id: 'sky',
+        name: '세레니티 스카이',
+        desc: '안개 낀 하늘빛과 더스티 블루의 고요함',
+        isDark: false,
+        swatchBg: '#F2F6F9',
+        swatchPrimary: '#6D8EA6',
+        vars: {
+          '--bg-outer': '#DFE6EC',
+          '--bg-paper': '#F2F6F9',
+          '--bg-card': '#F9FCFE',
+          '--border-color': '#DCE5EC',
+          '--primary-color': '#6D8EA6',
+          '--primary-hover': '#56758C',
+          '--secondary-color': '#9EB6C7',
+          '--text-main': '#2E3B45',
+          '--text-sub': '#71828F',
+          '--dot-color': 'rgba(109, 142, 166, 0.09)',
+          '--tape-color': 'rgba(193, 213, 227, 0.78)'
+        }
+      },
+      {
+        id: 'lavender',
+        name: '라벤더 미스트',
+        desc: '은은한 보랏빛과 뮤트 퍼플의 몽환적 무드',
+        isDark: false,
+        swatchBg: '#F6F3F9',
+        swatchPrimary: '#8C7BA6',
+        vars: {
+          '--bg-outer': '#E5E0EC',
+          '--bg-paper': '#F6F3F9',
+          '--bg-card': '#FCFAFE',
+          '--border-color': '#E4DCEC',
+          '--primary-color': '#8C7BA6',
+          '--primary-hover': '#74638C',
+          '--secondary-color': '#B4A6C9',
+          '--text-main': '#383142',
+          '--text-sub': '#7D738C',
+          '--dot-color': 'rgba(140, 123, 166, 0.09)',
+          '--tape-color': 'rgba(213, 202, 230, 0.78)'
+        }
+      },
+      {
+        id: 'butter',
+        name: '버터 옐로우',
+        desc: '따뜻한 바닐라 크림과 차분한 머스타드',
+        isDark: false,
+        swatchBg: '#FAF7ED',
+        swatchPrimary: '#B89B58',
+        vars: {
+          '--bg-outer': '#EAE4D3',
+          '--bg-paper': '#FAF7ED',
+          '--bg-card': '#FFFDF6',
+          '--border-color': '#EBE3CC',
+          '--primary-color': '#B89B58',
+          '--primary-hover': '#9C8143',
+          '--secondary-color': '#D4BE8A',
+          '--text-main': '#423B2B',
+          '--text-sub': '#8A8068',
+          '--dot-color': 'rgba(184, 155, 88, 0.09)',
+          '--tape-color': 'rgba(235, 220, 181, 0.78)'
+        }
+      },
+      {
+        id: 'sage',
+        name: '세이지 연두',
+        desc: '싱그럽지만 차분한 말차와 세이지 그린',
+        isDark: false,
+        swatchBg: '#F3F7F2',
+        swatchPrimary: '#759473',
+        vars: {
+          '--bg-outer': '#E0E7DF',
+          '--bg-paper': '#F3F7F2',
+          '--bg-card': '#FAFCF9',
+          '--border-color': '#DCE6DA',
+          '--primary-color': '#759473',
+          '--primary-hover': '#5D7A5B',
+          '--secondary-color': '#A3BDA1',
+          '--text-main': '#2F3D2E',
+          '--text-sub': '#728271',
+          '--dot-color': 'rgba(117, 148, 115, 0.09)',
+          '--tape-color': 'rgba(197, 217, 195, 0.78)'
+        }
+      },
+      {
+        id: 'peach',
+        name: '살구 피치',
+        desc: '포근한 복숭아빛과 테라코타 크림 감성',
+        isDark: false,
+        swatchBg: '#FBF4EE',
+        swatchPrimary: '#C2846B',
+        vars: {
+          '--bg-outer': '#ECE1D8',
+          '--bg-paper': '#FBF4EE',
+          '--bg-card': '#FFFAF6',
+          '--border-color': '#EEDFD3',
+          '--primary-color': '#C2846B',
+          '--primary-hover': '#A66B53',
+          '--secondary-color': '#DBA995',
+          '--text-main': '#45352E',
+          '--text-sub': '#8F7970',
+          '--dot-color': 'rgba(194, 132, 107, 0.09)',
+          '--tape-color': 'rgba(237, 206, 192, 0.78)'
+        }
+      },
+      {
+        id: 'dark',
+        name: '밤하늘 다크',
+        desc: '눈부심 없는 차분한 미드나잇 차콜 다크',
+        isDark: true,
+        swatchBg: '#191B20',
+        swatchPrimary: '#A8927B',
+        vars: {
+          '--bg-outer': '#101114',
+          '--bg-paper': '#191B20',
+          '--bg-card': '#22252C',
+          '--border-color': '#323640',
+          '--primary-color': '#A8927B',
+          '--primary-hover': '#BFA890',
+          '--secondary-color': '#857463',
+          '--text-main': '#E6E2DC',
+          '--text-sub': '#9B968E',
+          '--dot-color': 'rgba(255, 255, 255, 0.04)',
+          '--tape-color': 'rgba(140, 115, 91, 0.65)'
+        }
+      }
+    ];
+
+    const MOODS = [
+      {
+        id: 'sunny',
+        label: '맑음',
+        desc: '따스한 햇살이 비추는 행복한 하루',
+        bgBadge: 'bg-[#FFF3D6] dark:bg-[#3D3422]',
+        borderActive: 'border-[#E6B84C]',
+        bannerGradient: 'from-[#FFF6E0] to-[#F5E4C3] dark:from-[#332C20] dark:to-[#24211C]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full"><circle cx="18" cy="18" r="8" fill="#F6C344"/><g stroke="#F6C344" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="3" x2="18" y2="6"/><line x1="18" y1="30" x2="18" y2="33"/><line x1="3" y1="18" x2="6" y2="18"/><line x1="30" y1="18" x2="33" y2="18"/><line x1="7.4" y1="7.4" x2="9.5" y2="9.5"/><line x1="26.5" y1="26.5" x2="28.6" y2="28.6"/><line x1="28.6" y1="7.4" x2="26.5" y2="9.5"/><line x1="9.5" y1="26.5" x2="7.4" y2="28.6"/></g></svg>`
+      },
+      {
+        id: 'cloudy',
+        label: '구름',
+        desc: '잔잔하고 평온하게 흘러가는 시간',
+        bgBadge: 'bg-[#E6F0F5] dark:bg-[#23313A]',
+        borderActive: 'border-[#7FA8C2]',
+        bannerGradient: 'from-[#EBF3F7] to-[#DCE8EE] dark:from-[#222E36] dark:to-[#1D2429]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full"><path d="M11 26h15a6 6 0 00.5-11.98A8 8 0 0011.2 12.2 6.5 6.5 0 0011 26z" fill="#9BC1D9"/></svg>`
+      },
+      {
+        id: 'rainy',
+        label: '비',
+        desc: '조금은 차분하고 센치해지는 비 오는 날',
+        bgBadge: 'bg-[#E5E8F5] dark:bg-[#25293B]',
+        borderActive: 'border-[#8491C9]',
+        bannerGradient: 'from-[#ECEFFA] to-[#DCE1F2] dark:from-[#242838] dark:to-[#1C1F2B]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full"><path d="M10 22h16a5.5 5.5 0 00.4-10.98A7.5 7.5 0 0011.5 9.5 6 6 0 0010 22z" fill="#8C99CC"/><g stroke="#6C7BB8" stroke-width="2" stroke-linecap="round"><line x1="13" y1="25" x2="11.5" y2="29"/><line x1="18.5" y1="25" x2="17" y2="29"/><line x1="24" y1="25" x2="22.5" y2="29"/></g></svg>`
+      },
+      {
+        id: 'storm',
+        label: '번개',
+        desc: '마음속에 천둥이 치듯 답답하고 화나는 날',
+        bgBadge: 'bg-[#F7E4E1] dark:bg-[#3A2422]',
+        borderActive: 'border-[#D97B6C]',
+        bannerGradient: 'from-[#FAEAE7] to-[#F2D7D2] dark:from-[#362220] dark:to-[#261B1A]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full"><path d="M10 20h16a5 5 0 00.4-9.98A7 7 0 0011.8 8.8 5.5 5.5 0 0010 20z" fill="#D98A7C"/><polygon points="18,17 13,25 17.5,25 16,32 23,22 18.5,22" fill="#F2B84B"/></svg>`
+      },
+      {
+        id: 'windy',
+        label: '바람',
+        desc: '살랑이는 바람처럼 마음이 흔들리는 날',
+        bgBadge: 'bg-[#E4F2EC] dark:bg-[#21332C]',
+        borderActive: 'border-[#7BB59E]',
+        bannerGradient: 'from-[#EAF5F0] to-[#D7EBE2] dark:from-[#21332B] dark:to-[#1B2621]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full" fill="none" stroke="#76B39B" stroke-width="2.4" stroke-linecap="round"><path d="M6 14h17a3.5 3.5 0 10-3.5-3.5"/><path d="M4 19h22a3.5 3.5 0 11-3.5 3.5"/><path d="M9 24h9"/></svg>`
+      },
+      {
+        id: 'starry',
+        label: '설렘',
+        desc: '밤하늘의 별처럼 반짝이고 설레는 순간',
+        bgBadge: 'bg-[#F3E8F7] dark:bg-[#322438]',
+        borderActive: 'border-[#B68BC7]',
+        bannerGradient: 'from-[#F6EEFA] to-[#EADBF2] dark:from-[#302336] dark:to-[#231B26]',
+        svg: `<svg viewBox="0 0 36 36" class="w-full h-full"><path d="M18 5l3.6 7.5 8.2 1.1-6 5.7 1.5 8.2L18 23.5l-7.3 4 1.5-8.2-6-5.7 8.2-1.1L18 5z" fill="#C494D6"/><circle cx="28" cy="8" r="1.5" fill="#E6B84C"/><circle cx="8" cy="26" r="1.5" fill="#E6B84C"/></svg>`
+      }
+    ];
+
+    const CURATED_QUESTIONS = [
+      "오늘 하루 중 가장 따뜻하게 기억되는 순간은 언제인가요?",
+      "지금 창밖을 바라보았을 때 어떤 풍경과 소리가 느껴지나요?",
+      "오늘 나 자신에게 가장 해주고 싶은 위로의 한마디는 무엇인가요?",
+      "최근에 마신 음료나 음식 중 가장 기분 좋았던 맛은 무엇이었나요?",
+      "오늘 우연히 마주친 작고 소소한 행복이 있다면 적어보세요.",
+      "지금 이 순간, 마음속에서 가장 크게 자리 잡고 있는 생각은 무엇인가요?",
+      "1년 뒤의 내가 오늘의 일기를 읽는다면 어떤 이야기를 들려주고 싶나요?",
+      "오늘 하루를 한 곡의 배경음악으로 표현한다면 어떤 분위기일까요?"
+    ];
+
+    /**
+     * 2. 전역 상태 관리
+     */
+    let state = {
+      entries: [],
+      settings: {
+        theme: 'ivory',
+        darkMode: false,
+        pin: null // 4자리 문자열 또는 null
+      },
+      editor: {
+        editingId: null,
+        mood: 'sunny',
+        feeling: 'happy',
+        customFeeling: '',
+        music: null, // { title, artist, album, cover, previewUrl, melonUrl }
+        font: 'serif',
+        align: 'left',
+        photoData: null
+      },
+      audioPlayer: {
+        audio: null,
+        playingContext: null // 'editor' | 'modal' | null
+      },
+      calendar: {
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() // 0 ~ 11
+      },
+      timelineFilter: 'all',
+      questionIndex: Math.floor(Math.random() * CURATED_QUESTIONS.length),
+      pinSession: {
+        mode: 'unlock', // 'unlock' | 'setup'
+        buffer: ''
+      }
+    };
+
+    /**
+     * 3. 초기화 및 localStorage 로드
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadFromStorage();
+      applyTheme(state.settings.theme || (state.settings.darkMode ? 'dark' : 'ivory'), false);
+      renderThemeSelectors();
+      initSampleDataIfEmpty();
+      
+      // 잠금 비밀번호가 설정되어 있으면 잠금 화면 표시
+      if (state.settings.pin) {
+        openLockScreen('unlock');
+      }
+
+      // 에디터 초기 세팅
+      const todayStr = getTodayDateString();
+      const dateInput = document.getElementById('entry-date');
+      if (dateInput) dateInput.value = todayStr;
+      renderMoodSelector();
+      selectMood('sunny', false);
+      renderFeelingSelector();
+      selectFeeling('happy', false);
+      renderDailyQuestion();
+      restoreDraftIfAvailable();
+
+      // 캘린더 및 타임라인 초기 렌더링
+      renderCalendar();
+      renderTimelineFilters();
+      renderTimeline();
+      updateSettingsUI();
+
+      // 외부 클릭 시 상단 테마 팝오버 및 음악 검색 결과 닫기
+      document.addEventListener('click', (e) => {
+        const popover = document.getElementById('theme-popover');
+        const btn = document.getElementById('header-palette-btn');
+        if (popover && !popover.classList.contains('hidden') && !popover.contains(e.target) && !btn.contains(e.target)) {
+          popover.classList.add('hidden');
+        }
+
+        const musicBox = document.getElementById('music-search-box');
+        const musicResults = document.getElementById('music-search-results');
+        if (musicBox && musicResults && !musicBox.contains(e.target)) {
+          musicResults.classList.add('hidden');
+        }
+      });
+    });
+
+    function loadFromStorage() {
+      try {
+        const savedEntries = localStorage.getItem(STORAGE_KEYS.ENTRIES);
+        if (savedEntries) state.entries = JSON.parse(savedEntries);
+
+        const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        if (savedSettings) state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
+      } catch (e) {
+        console.error('로컬 스토리지 로드 오류:', e);
+      }
+    }
+
+    function saveEntriesToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(state.entries));
+        updateSettingsUI();
+        return true;
+      } catch (e) {
+        showToast('저장 공간이 부족합니다. 오래된 사진 일기를 정리해주세요.');
+        return false;
+      }
+    }
+
+    function saveSettingsToStorage() {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(state.settings));
+      updateSettingsUI();
+    }
+
+    function getTodayDateString() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    /**
+     * 초기 방문자를 위한 감성 샘플 일기 3종 생성 (최초 1회)
+     */
+    function initSampleDataIfEmpty() {
+      const initializedFlag = localStorage.getItem('moodlog_initialized_v1');
+      if (initializedFlag || state.entries.length > 0) return;
+
+      const today = new Date();
+      const formatOffsetDate = (daysAgo) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - daysAgo);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+
+      // 캔버스로 감성적인 폴라로이드 샘플 일러스트 이미지 생성
+      const samplePhoto = createSamplePolaroidDataURL();
+
+      state.entries = [
+        {
+          id: 'sample-1',
+          date: formatOffsetDate(0),
+          mood: 'sunny',
+          feeling: 'calm',
+          customFeeling: '',
+          music: {
+            title: 'Square (2017)',
+            artist: '백예린 (Yerin Baek)',
+            album: 'Every letter I sent you.',
+            cover: createGeneratedAlbumCover('Square', '#7A9972'),
+            previewUrl: '',
+            melonUrl: 'https://www.melon.com/search/total/index.htm?q=' + encodeURIComponent('백예린 Square')
+          },
+          title: '오후의 햇살과 따뜻한 드립 커피 한 잔',
+          content: '바쁜 일주일을 보내고 모처럼 여유로운 오후를 맞이했다.\n창문 틈으로 들어오는 햇살이 책상 위 종이 노트를 따뜻하게 비추는 순간, 복잡한 생각들이 천천히 가라앉는 기분이 들었다.\n\n거창한 일이 없어도 이렇게 조용히 내 마음을 들여다볼 수 있는 시간이 참 소중하다.',
+          font: 'serif',
+          align: 'left',
+          photo: samplePhoto,
+          caption: '창가 자리에서의 평화로운 오후',
+          createdAt: Date.now()
+        },
+        {
+          id: 'sample-2',
+          date: formatOffsetDate(2),
+          mood: 'rainy',
+          feeling: 'lazy',
+          customFeeling: '센치함',
+          music: {
+            title: '밤편지 (Through the Night)',
+            artist: '아이유 (IU)',
+            album: '밤편지',
+            cover: createGeneratedAlbumCover('밤편지', '#4C5B78'),
+            previewUrl: '',
+            melonUrl: 'https://www.melon.com/search/total/index.htm?q=' + encodeURIComponent('아이유 밤편지')
+          },
+          title: '빗소리를 들으며 걸었던 밤 산책',
+          content: '저녁 무렵부터 부슬부슬 내리기 시작한 비 덕분에 공기가 한결 차분해졌다.\n우산 위로 떨어지는 빗방울 소리를 배경음악 삼아 천천히 동네 한 바퀴를 걸었다. 가끔은 이렇게 젖은 거리의 불빛을 바라보며 생각을 정리하는 날도 필요하다.',
+          font: 'hand',
+          align: 'left',
+          photo: null,
+          caption: '',
+          createdAt: Date.now() - 172800000
+        },
+        {
+          id: 'sample-3',
+          date: formatOffsetDate(5),
+          mood: 'starry',
+          feeling: 'excited',
+          customFeeling: '',
+          music: {
+            title: '한 페이지가 될 수 있게',
+            artist: 'DAY6 (데이식스)',
+            album: 'The Book of Us : Gravity',
+            cover: createGeneratedAlbumCover('DAY6', '#6D8EA6'),
+            previewUrl: '',
+            melonUrl: 'https://www.melon.com/search/total/index.htm?q=' + encodeURIComponent('DAY6 한 페이지가 될 수 있게')
+          },
+          title: '오래 기다려온 작은 시작을 앞두고',
+          content: '오랫동안 마음속으로만 그려왔던 일을 드디어 시작하기로 결심했다.\n잘 해낼 수 있을까 조금 떨리기도 하지만, 밤하늘의 별처럼 반짝이는 설렘이 더 크다. 한 걸음씩 나만의 속도로 기록해 나가야지.',
+          font: 'serif',
+          align: 'center',
+          photo: null,
+          caption: '',
+          createdAt: Date.now() - 432000000
+        }
+      ];
+
+      saveEntriesToStorage();
+      localStorage.setItem('moodlog_initialized_v1', 'true');
+    }
+
+    function createGeneratedAlbumCover(label, bgHex) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = bgHex || '#8C735B';
+      ctx.fillRect(0, 0, 160, 160);
+
+      // 은은한 빛 번짐 효과
+      const grad = ctx.createRadialGradient(45, 45, 10, 80, 80, 110);
+      grad.addColorStop(0, 'rgba(255,255,255,0.35)');
+      grad.addColorStop(1, 'rgba(0,0,0,0.18)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 160, 160);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText((label || '♪').slice(0, 8), 80, 86);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    }
+
+    /**
+     * 초기 샘플 일기용 감성 폴라로이드 이미지 생성
+     */
+    function createSamplePolaroidDataURL() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 480;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+
+      // 따뜻한 햇살이 비추는 하늘 배경 그라데이션
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, 340);
+      skyGrad.addColorStop(0, '#F7EAD2');
+      skyGrad.addColorStop(0.65, '#E9D3B4');
+      skyGrad.addColorStop(1, '#D6B892');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, 480, 480);
+
+      // 창가 햇살 원형 광원
+      const sunGrad = ctx.createRadialGradient(350, 130, 12, 350, 130, 140);
+      sunGrad.addColorStop(0, 'rgba(255, 248, 225, 0.95)');
+      sunGrad.addColorStop(1, 'rgba(255, 248, 225, 0)');
+      ctx.fillStyle = sunGrad;
+      ctx.fillRect(0, 0, 480, 480);
+
+      // 먼 산과 언덕 실루엣
+      ctx.fillStyle = '#B8A28A';
+      ctx.beginPath();
+      ctx.moveTo(0, 310);
+      ctx.quadraticCurveTo(130, 230, 260, 295);
+      ctx.quadraticCurveTo(380, 245, 480, 285);
+      ctx.lineTo(480, 480);
+      ctx.lineTo(0, 480);
+      ctx.closePath();
+      ctx.fill();
+
+      // 책상/테이블 영역
+      ctx.fillStyle = '#7D634B';
+      ctx.fillRect(0, 350, 480, 130);
+
+      // 따뜻한 커피 머그컵
+      ctx.fillStyle = '#FFFDF9';
+      ctx.beginPath();
+      ctx.roundRect(175, 315, 76, 66, [6, 6, 18, 18]);
+      ctx.fill();
+      ctx.strokeStyle = '#FFFDF9';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(253, 346, 15, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+
+      // 커피 표면 및 김
+      ctx.fillStyle = '#593E2B';
+      ctx.beginPath();
+      ctx.ellipse(213, 320, 32, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(200, 302);
+      ctx.quadraticCurveTo(192, 282, 202, 264);
+      ctx.moveTo(224, 300);
+      ctx.quadraticCurveTo(232, 280, 222, 260);
+      ctx.stroke();
+
+      return canvas.toDataURL('image/jpeg', 0.8);
+    }
+
+    /**
+     * 4. 탭 전환 및 네비게이션
+     */
+    function switchTab(tabName) {
+      const tabs = ['editor', 'calendar', 'timeline', 'settings'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        const navBtn = document.getElementById(`nav-${t}`);
+        navBtn.classList.remove('text-mood-primary', 'font-semibold');
+        navBtn.classList.add('text-mood-subtext', 'dark:text-mood-darkSubtext');
+      });
+
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+      const activeNav = document.getElementById(`nav-${tabName}`);
+      activeNav.classList.remove('text-mood-subtext', 'dark:text-mood-darkSubtext');
+      activeNav.classList.add('text-mood-primary', 'font-semibold');
+
+      if (tabName === 'calendar') renderCalendar();
+      if (tabName === 'timeline') renderTimeline();
+      if (tabName === 'settings') updateSettingsUI();
+
+      document.getElementById('main-content').scrollTop = 0;
+    }
+
+    /**
+     * 5. 일기 에디터 로직 (감정 선택, 질문, 폰트, 사진 압축, 자동 임시저장)
+     */
+    function renderMoodSelector() {
+      const container = document.getElementById('mood-selector-grid');
+      container.innerHTML = MOODS.map(m => `
+        <button type="button" onclick="selectMood('${m.id}')" id="mood-btn-${m.id}"
+          class="flex flex-col items-center py-2 px-1 rounded-2xl border-2 border-transparent bg-paper-card dark:bg-paper-darkCard hover:scale-105 transition-all">
+          <div class="w-8 h-8 mb-1">${m.svg}</div>
+          <span class="text-[11px] font-medium">${m.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectMood(moodId, triggerDraft = true) {
+      state.editor.mood = moodId;
+      const moodObj = MOODS.find(m => m.id === moodId) || MOODS[0];
+
+      // 버튼 활성화 스타일 갱신
+      MOODS.forEach(m => {
+        const btn = document.getElementById(`mood-btn-${m.id}`);
+        if (!btn) return;
+        if (m.id === moodId) {
+          btn.className = `flex flex-col items-center py-2 px-1 rounded-2xl border-2 ${m.borderActive} ${m.bgBadge} scale-105 shadow-xs transition-all`;
+        } else {
+          btn.className = `flex flex-col items-center py-2 px-1 rounded-2xl border-2 border-transparent bg-paper-card dark:bg-paper-darkCard opacity-75 hover:opacity-100 transition-all`;
+        }
+      });
+
+      // 상단 무드 배너 업데이트
+      const banner = document.getElementById('mood-banner');
+      banner.className = `relative rounded-2xl p-4 mb-5 overflow-hidden border border-paper-border dark:border-paper-darkBorder transition-all duration-500 bg-gradient-to-br ${moodObj.bannerGradient}`;
+      document.getElementById('banner-mood-tag').textContent = moodObj.desc;
+      document.getElementById('banner-illustration').innerHTML = moodObj.svg;
+
+      if (triggerDraft) autoSaveDraft();
+    }
+
+    /**
+     * 오늘의 기분 선택 (8종 칩 + 직접 입력)
+     */
+    function renderFeelingSelector() {
+      const container = document.getElementById('feeling-selector-grid');
+      if (!container) return;
+      container.innerHTML = FEELINGS.map(f => `
+        <button type="button" onclick="selectFeeling('${f.id}')" id="feeling-btn-${f.id}"
+          class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-paper-border bg-paper-light/60 text-mood-subtext text-[11px] font-medium transition-all">
+          <span class="shrink-0">${f.svg}</span>
+          <span class="truncate">${f.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectFeeling(feelingId, triggerDraft = true) {
+      state.editor.feeling = feelingId;
+      const feelingObj = FEELINGS.find(f => f.id === feelingId) || FEELINGS[0];
+
+      FEELINGS.forEach(f => {
+        const btn = document.getElementById(`feeling-btn-${f.id}`);
+        if (!btn) return;
+        if (f.id === feelingId) {
+          btn.className = `flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-mood-primary ${f.badgeBg} font-bold shadow-2xs scale-[1.02] transition-all`;
+        } else {
+          btn.className = `flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-paper-border bg-paper-light/60 text-mood-subtext text-[11px] font-medium hover:bg-mood-primary/5 transition-all`;
+        }
+      });
+
+      updateFeelingBadgeDisplay();
+      if (triggerDraft) autoSaveDraft();
+    }
+
+    function handleCustomFeelingInput(val) {
+      state.editor.customFeeling = val.trim();
+      updateFeelingBadgeDisplay();
+      autoSaveDraft();
+    }
+
+    function updateFeelingBadgeDisplay() {
+      const badge = document.getElementById('selected-feeling-badge');
+      if (!badge) return;
+      const feelingObj = FEELINGS.find(f => f.id === state.editor.feeling) || FEELINGS[0];
+      badge.textContent = state.editor.customFeeling ? `${feelingObj.label} · ${state.editor.customFeeling}` : feelingObj.label;
+    }
+
+    function getEntryFeelingInfo(entry) {
+      const fObj = FEELINGS.find(f => f.id === entry.feeling) || FEELINGS[0];
+      const displayLabel = entry.customFeeling ? `${fObj.label} · ${entry.customFeeling}` : fObj.label;
+      return { ...fObj, displayLabel };
+    }
+
+    /**
+     * 오늘 들은 음악 검색 (iTunes KR API + 한국 감성 곡 폴백 + 멜론 연동)
+     */
+    let musicSearchTimer = null;
+    let lastSearchedTracks = [];
+
+    function handleMusicSearchInput(query) {
+      const trimmed = query.trim();
+      const clearBtn = document.getElementById('clear-music-search-btn');
+      const resultsBox = document.getElementById('music-search-results');
+      const melonDirect = document.getElementById('melon-direct-link');
+
+      melonDirect.href = `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(trimmed)}`;
+
+      if (!trimmed) {
+        clearBtn.classList.add('hidden');
+        resultsBox.classList.add('hidden');
+        return;
+      }
+
+      clearBtn.classList.remove('hidden');
+      clearTimeout(musicSearchTimer);
+      musicSearchTimer = setTimeout(() => {
+        searchMusicTracks(trimmed);
+      }, 320);
+    }
+
+    async function searchMusicTracks(query) {
+      const resultsBox = document.getElementById('music-search-results');
+      resultsBox.classList.remove('hidden');
+      resultsBox.innerHTML = `<div class="p-3 text-center text-[11px] text-mood-subtext">멜론/음원 데이터베이스에서 '${escapeHTML(query)}' 검색 중...</div>`;
+
+      // 로컬 큐레이션 폴백 매칭
+      const qLower = query.toLowerCase();
+      const fallbackMatches = FALLBACK_SONGS.filter(s =>
+        s.title.toLowerCase().includes(qLower) || s.artist.toLowerCase().includes(qLower)
+      ).map(s => ({
+        title: s.title,
+        artist: s.artist,
+        album: s.album,
+        cover: createGeneratedAlbumCover(s.title, s.coverColor),
+        previewUrl: '',
+        melonUrl: `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(s.artist + ' ' + s.title)}`
+      }));
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=KR&entity=song&limit=6`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error('API Error');
+        const data = await res.json();
+
+        const apiTracks = (data.results || []).map(item => ({
+          title: item.trackName,
+          artist: item.artistName,
+          album: item.collectionName || '',
+          cover: (item.artworkUrl100 || '').replace('100x100', '200x200'),
+          previewUrl: item.previewUrl || '',
+          melonUrl: `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(item.artistName + ' ' + item.trackName)}`
+        }));
+
+        const combined = apiTracks.length > 0 ? apiTracks : fallbackMatches;
+        renderMusicSearchResults(combined, query);
+      } catch (err) {
+        renderMusicSearchResults(fallbackMatches, query);
+      }
+    }
+
+    function renderMusicSearchResults(tracks, query) {
+      lastSearchedTracks = tracks;
+      const resultsBox = document.getElementById('music-search-results');
+      const melonUrl = `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(query)}`;
+
+      let html = tracks.map((t, idx) => `
+        <div class="p-2.5 flex items-center justify-between gap-2.5 hover:bg-mood-primary/5 transition">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img src="${t.cover}" alt="앨범" class="w-10 h-10 rounded-lg object-cover shrink-0 bg-gray-200" />
+            <div class="min-w-0">
+              <p class="text-xs font-bold truncate">${escapeHTML(t.title)}</p>
+              <p class="text-[11px] text-mood-subtext truncate">${escapeHTML(t.artist)}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <a href="${t.melonUrl}" target="_blank" rel="noopener noreferrer" title="멜론에서 열기"
+              class="px-2 py-1 rounded-lg bg-[#00CD3C]/12 text-[#00A832] dark:text-[#2CE661] text-[10px] font-bold hover:bg-[#00CD3C]/20 transition">
+              Melon
+            </a>
+            <button type="button" onclick="selectSearchedTrack(${idx})"
+              class="px-2.5 py-1 rounded-lg bg-mood-primary text-white text-[11px] font-medium hover:bg-mood-primaryHover transition">
+              선택
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // 검색 결과 하단에 직접 등록 & 멜론 열기 옵션 항상 제공
+      html += `
+        <div class="p-2.5 bg-paper-card/70 flex items-center justify-between gap-2 text-[11px]">
+          <button type="button" onclick="selectManualTrack('${escapeHTML(query).replace(/'/g, "\\'")}')" class="text-mood-primary font-medium hover:underline truncate">
+            + '${escapeHTML(query)}' 직접 곡으로 추가
+          </button>
+          <a href="${melonUrl}" target="_blank" rel="noopener noreferrer" class="text-[#00A832] dark:text-[#2CE661] font-semibold shrink-0 hover:underline">
+            멜론 검색창 열기 ↗
+          </a>
+        </div>
+      `;
+
+      resultsBox.innerHTML = html;
+    }
+
+    function selectSearchedTrack(index) {
+      const track = lastSearchedTracks[index];
+      if (!track) return;
+      applySelectedMusic(track);
+    }
+
+    function selectManualTrack(rawQuery) {
+      const parts = rawQuery.split('-').map(s => s.trim());
+      const track = {
+        title: parts.length > 1 ? parts[1] : rawQuery,
+        artist: parts.length > 1 ? parts[0] : '오늘의 플레이리스트',
+        album: 'Melon Music',
+        cover: createGeneratedAlbumCover(rawQuery, '#759473'),
+        previewUrl: '',
+        melonUrl: `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(rawQuery)}`
+      };
+      applySelectedMusic(track);
+    }
+
+    function applySelectedMusic(track, triggerDraft = true) {
+      stopAllAudioPreviews();
+      state.editor.music = track;
+
+      document.getElementById('music-search-results').classList.add('hidden');
+      document.getElementById('music-search-input').value = '';
+      document.getElementById('clear-music-search-btn').classList.add('hidden');
+
+      const card = document.getElementById('selected-music-card');
+      document.getElementById('selected-music-cover').src = track.cover;
+      document.getElementById('selected-music-title').textContent = track.title;
+      document.getElementById('selected-music-artist').textContent = track.artist;
+      document.getElementById('selected-music-melon-link').href = track.melonUrl || `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(track.artist + ' ' + track.title)}`;
+
+      const previewBtn = document.getElementById('editor-audio-toggle-btn');
+      if (track.previewUrl) {
+        previewBtn.classList.remove('hidden');
+        previewBtn.textContent = '▶ 30초 미리듣기';
+      } else {
+        previewBtn.classList.add('hidden');
+      }
+
+      card.classList.remove('hidden');
+      if (triggerDraft) {
+        autoSaveDraft();
+        showToast(`'${track.title}' 곡이 일기에 담겼습니다`);
+      }
+    }
+
+    function removeSelectedMusic() {
+      stopAllAudioPreviews();
+      state.editor.music = null;
+      document.getElementById('selected-music-card').classList.add('hidden');
+      autoSaveDraft();
+    }
+
+    function clearMusicSearch() {
+      document.getElementById('music-search-input').value = '';
+      document.getElementById('clear-music-search-btn').classList.add('hidden');
+      document.getElementById('music-search-results').classList.add('hidden');
+    }
+
+    function toggleEditorMusicPreview() {
+      if (!state.editor.music || !state.editor.music.previewUrl) return;
+      toggleAudioPreview(state.editor.music.previewUrl, 'editor');
+    }
+
+    let currentModalMusic = null;
+    function toggleModalMusicPreview() {
+      if (!currentModalMusic || !currentModalMusic.previewUrl) return;
+      toggleAudioPreview(currentModalMusic.previewUrl, 'modal');
+    }
+
+    function toggleAudioPreview(url, context) {
+      if (state.audioPlayer.playingContext === context && state.audioPlayer.audio) {
+        stopAllAudioPreviews();
+        return;
+      }
+
+      stopAllAudioPreviews();
+      const audio = new Audio(url);
+      audio.volume = 0.75;
+      state.audioPlayer.audio = audio;
+      state.audioPlayer.playingContext = context;
+
+      const discEl = document.getElementById(context === 'editor' ? 'editor-vinyl-disc' : 'modal-vinyl-disc');
+      const btnEl = document.getElementById(context === 'editor' ? 'editor-audio-toggle-btn' : 'modal-audio-toggle-btn');
+      if (discEl) {
+        discEl.classList.remove('animate-spin-paused');
+        discEl.classList.add('animate-spin-slow');
+      }
+      if (btnEl) btnEl.textContent = '⏸ 일시정지';
+
+      audio.play().catch(() => {
+        stopAllAudioPreviews();
+        showToast('브라우저 정책으로 미리듣기를 재생할 수 없습니다');
+      });
+
+      audio.onended = () => stopAllAudioPreviews();
+    }
+
+    function stopAllAudioPreviews() {
+      if (state.audioPlayer.audio) {
+        state.audioPlayer.audio.pause();
+        state.audioPlayer.audio = null;
+      }
+      state.audioPlayer.playingContext = null;
+
+      ['editor', 'modal'].forEach(ctx => {
+        const discEl = document.getElementById(`${ctx}-vinyl-disc`);
+        const btnEl = document.getElementById(`${ctx}-audio-toggle-btn`);
+        if (discEl) {
+          discEl.classList.remove('animate-spin-slow');
+          discEl.classList.add('animate-spin-paused');
+        }
+        if (btnEl) {
+          btnEl.textContent = ctx === 'editor' ? '▶ 30초 미리듣기' : '▶ 듣기';
+        }
+      });
+    }
+
+    function renderDailyQuestion() {
+      document.getElementById('daily-question-text').textContent = `"${CURATED_QUESTIONS[state.questionIndex]}"`;
+    }
+
+    function nextRandomQuestion() {
+      state.questionIndex = (state.questionIndex + 1) % CURATED_QUESTIONS.length;
+      renderDailyQuestion();
+    }
+
+    function insertQuestionToBody() {
+      const q = CURATED_QUESTIONS[state.questionIndex];
+      const textarea = document.getElementById('entry-content');
+      const prefix = textarea.value.trim() ? '\n\n' : '';
+      textarea.value += `${prefix}Q. ${q}\nA. `;
+      textarea.focus();
+      autoSaveDraft();
+      showToast('오늘의 질문이 본문에 추가되었습니다');
+    }
+
+    function setEditorFont(fontType) {
+      state.editor.font = fontType;
+      const titleEl = document.getElementById('entry-title');
+      const contentEl = document.getElementById('entry-content');
+
+      ['serif', 'sans', 'hand'].forEach(f => {
+        const btn = document.getElementById(`btn-font-${f}`);
+        if (f === fontType) {
+          btn.classList.add('bg-mood-primary', 'text-white');
+          btn.classList.remove('text-mood-subtext');
+        } else {
+          btn.classList.remove('bg-mood-primary', 'text-white');
+          btn.classList.add('text-mood-subtext');
+        }
+      });
+
+      titleEl.classList.remove('font-style-serif', 'font-style-sans', 'font-style-hand');
+      contentEl.classList.remove('font-style-serif', 'font-style-sans', 'font-style-hand');
+      titleEl.classList.add(`font-style-${fontType}`);
+      contentEl.classList.add(`font-style-${fontType}`);
+      autoSaveDraft();
+    }
+
+    function setEditorAlign(alignType) {
+      state.editor.align = alignType;
+      const titleEl = document.getElementById('entry-title');
+      const contentEl = document.getElementById('entry-content');
+
+      ['left', 'center'].forEach(a => {
+        const btn = document.getElementById(`btn-align-${a}`);
+        if (a === alignType) {
+          btn.classList.add('bg-mood-primary/15', 'text-mood-primary');
+          btn.classList.remove('text-mood-subtext');
+        } else {
+          btn.classList.remove('bg-mood-primary/15', 'text-mood-primary');
+          btn.classList.add('text-mood-subtext');
+        }
+      });
+
+      titleEl.style.textAlign = alignType;
+      contentEl.style.textAlign = alignType;
+      autoSaveDraft();
+    }
+
+    /**
+     * 사진 첨부 및 Canvas 리사이징/압축 (localStorage 용량 최적화)
+     */
+    function handlePhotoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const MAX_SIZE = 720; // 가로/세로 최대 720px로 압축하여 용량 절약
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+          state.editor.photoData = compressedDataUrl;
+          showPolaroidPreview(compressedDataUrl, document.getElementById('polaroid-caption').value);
+          autoSaveDraft();
+          showToast('폴라로이드 사진이 첨부되었습니다');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    function showPolaroidPreview(dataUrl, caption = '') {
+      const wrapper = document.getElementById('polaroid-preview-wrapper');
+      document.getElementById('polaroid-img').src = dataUrl;
+      document.getElementById('polaroid-caption').value = caption;
+      wrapper.classList.remove('hidden');
+    }
+
+    function removePhoto() {
+      state.editor.photoData = null;
+      document.getElementById('polaroid-preview-wrapper').classList.add('hidden');
+      document.getElementById('polaroid-img').src = '';
+      document.getElementById('polaroid-caption').value = '';
+      autoSaveDraft();
+    }
+
+    /**
+     * 작성 중인 내용 자동 임시 저장
+     */
+    function autoSaveDraft() {
+      if (state.editor.editingId) return; // 기존 일기 수정 중에는 임시저장 덮어쓰지 않음
+
+      const draft = {
+        date: document.getElementById('entry-date').value,
+        mood: state.editor.mood,
+        feeling: state.editor.feeling,
+        customFeeling: state.editor.customFeeling,
+        music: state.editor.music,
+        title: document.getElementById('entry-title').value,
+        content: document.getElementById('entry-content').value,
+        font: state.editor.font,
+        align: state.editor.align,
+        photo: state.editor.photoData,
+        caption: document.getElementById('polaroid-caption').value
+      };
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.DRAFT, JSON.stringify(draft));
+        const now = new Date();
+        document.getElementById('draft-status').textContent = `임시저장 완료 (${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')})`;
+      } catch (e) {
+        document.getElementById('draft-status').textContent = '임시저장 용량 초과';
+      }
+    }
+
+    function restoreDraftIfAvailable() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.DRAFT);
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (!draft.title && !draft.content && !draft.photo && !draft.music) return;
+
+        const dateEl = document.getElementById('entry-date');
+        if (draft.date && dateEl) dateEl.value = draft.date;
+        if (draft.mood) selectMood(draft.mood, false);
+        if (draft.feeling) selectFeeling(draft.feeling, false);
+        if (draft.customFeeling) {
+          state.editor.customFeeling = draft.customFeeling;
+          const customFeelingEl = document.getElementById('custom-feeling-input');
+          if (customFeelingEl) customFeelingEl.value = draft.customFeeling;
+          updateFeelingBadgeDisplay();
+        }
+        if (draft.music) applySelectedMusic(draft.music, false);
+        const titleEl = document.getElementById('entry-title');
+        const contentEl = document.getElementById('entry-content');
+        if (draft.title && titleEl) titleEl.value = draft.title;
+        if (draft.content && contentEl) contentEl.value = draft.content;
+        if (draft.font) setEditorFont(draft.font);
+        if (draft.align) setEditorAlign(draft.align);
+        if (draft.photo) {
+          state.editor.photoData = draft.photo;
+          showPolaroidPreview(draft.photo, draft.caption || '');
+        }
+        const draftStatusEl = document.getElementById('draft-status');
+        if (draftStatusEl) draftStatusEl.textContent = '이전 작성 내용을 불러왔어요';
+      } catch (e) {}
+    }
+
+    /**
+     * 일기 최종 저장 (신규 등록 및 수정 통합)
+     */
+    function saveDiaryEntry() {
+      const dateEl = document.getElementById('entry-date');
+      const titleEl = document.getElementById('entry-title');
+      const contentEl = document.getElementById('entry-content');
+      const captionEl = document.getElementById('polaroid-caption');
+
+      const date = (dateEl && dateEl.value) || getTodayDateString();
+      const title = (titleEl ? titleEl.value : '').trim();
+      const content = (contentEl ? contentEl.value : '').trim();
+      const caption = (captionEl ? captionEl.value : '').trim();
+
+      if (!title && !content && !state.editor.photoData) {
+        showToast('제목이나 내용을 한 줄이라도 적어주세요');
+        return;
+      }
+
+      const entryData = {
+        id: state.editor.editingId || `diary-${Date.now()}`,
+        date,
+        mood: state.editor.mood,
+        feeling: state.editor.feeling,
+        customFeeling: state.editor.customFeeling,
+        music: state.editor.music,
+        title: title || '무제 (제목 없는 기록)',
+        content,
+        font: state.editor.font,
+        align: state.editor.align,
+        photo: state.editor.photoData,
+        caption,
+        createdAt: state.editor.editingId 
+          ? (state.entries.find(e => e.id === state.editor.editingId)?.createdAt || Date.now()) 
+          : Date.now()
+      };
+
+      if (state.editor.editingId) {
+        const idx = state.entries.findIndex(e => e.id === state.editor.editingId);
+        if (idx !== -1) state.entries[idx] = entryData;
+      } else {
+        state.entries.unshift(entryData);
+        localStorage.removeItem(STORAGE_KEYS.DRAFT);
+      }
+
+      if (saveEntriesToStorage()) {
+        showToast(state.editor.editingId ? '일기가 수정되었습니다' : '오늘의 감성이 소중히 기록되었습니다');
+        resetEditor();
+        switchTab('timeline');
+      }
+    }
+
+    function resetEditor() {
+      stopAllAudioPreviews();
+      state.editor.editingId = null;
+      const dateEl = document.getElementById('entry-date');
+      const titleEl = document.getElementById('entry-title');
+      const contentEl = document.getElementById('entry-content');
+      const customFeelingEl = document.getElementById('custom-feeling-input');
+      const editBadgeEl = document.getElementById('edit-mode-badge');
+      const saveBtnTextEl = document.getElementById('save-btn-text');
+      const draftStatusEl = document.getElementById('draft-status');
+
+      if (dateEl) dateEl.value = getTodayDateString();
+      if (titleEl) titleEl.value = '';
+      if (contentEl) contentEl.value = '';
+      if (customFeelingEl) customFeelingEl.value = '';
+      state.editor.customFeeling = '';
+      removePhoto();
+      removeSelectedMusic();
+      selectMood('sunny', false);
+      selectFeeling('happy', false);
+      setEditorFont('serif');
+      setEditorAlign('left');
+      if (editBadgeEl) editBadgeEl.classList.add('hidden');
+      if (saveBtnTextEl) saveBtnTextEl.textContent = '기록 저장하기';
+      if (draftStatusEl) draftStatusEl.textContent = '새 일기 작성 중';
+    }
+
+    function loadEntryIntoEditor(entry) {
+      closeDetailModal();
+      state.editor.editingId = entry.id;
+      const dateEl = document.getElementById('entry-date');
+      const titleEl = document.getElementById('entry-title');
+      const contentEl = document.getElementById('entry-content');
+      const customFeelingEl = document.getElementById('custom-feeling-input');
+      const editBadgeEl = document.getElementById('edit-mode-badge');
+      const saveBtnTextEl = document.getElementById('save-btn-text');
+      const draftStatusEl = document.getElementById('draft-status');
+
+      if (dateEl) dateEl.value = entry.date;
+      if (titleEl) titleEl.value = entry.title;
+      if (contentEl) contentEl.value = entry.content;
+      selectMood(entry.mood, false);
+      selectFeeling(entry.feeling || 'happy', false);
+      state.editor.customFeeling = entry.customFeeling || '';
+      if (customFeelingEl) customFeelingEl.value = state.editor.customFeeling;
+      updateFeelingBadgeDisplay();
+
+      if (entry.music) {
+        applySelectedMusic(entry.music, false);
+      } else {
+        removeSelectedMusic();
+      }
+
+      setEditorFont(entry.font || 'serif');
+      setEditorAlign(entry.align || 'left');
+
+      if (entry.photo) {
+        state.editor.photoData = entry.photo;
+        showPolaroidPreview(entry.photo, entry.caption || '');
+      } else {
+        removePhoto();
+      }
+
+      if (editBadgeEl) editBadgeEl.classList.remove('hidden');
+      if (saveBtnTextEl) saveBtnTextEl.textContent = '수정 완료하기';
+      if (draftStatusEl) draftStatusEl.textContent = '수정 모드';
+      switchTab('editor');
+    }
+
+    /**
+     * 6. 월간 감정 캘린더 렌더링
+     */
+    function changeCalendarMonth(delta) {
+      state.calendar.month += delta;
+      if (state.calendar.month < 0) {
+        state.calendar.month = 11;
+        state.calendar.year -= 1;
+      } else if (state.calendar.month > 11) {
+        state.calendar.month = 0;
+        state.calendar.year += 1;
+      }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const { year, month } = state.calendar;
+      document.getElementById('calendar-month-title').textContent = `${year}년 ${month + 1}월`;
+
+      const firstDay = new Date(year, month, 1).getDay(); // 0(일) ~ 6(토)
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const todayStr = getTodayDateString();
+
+      // 해당 월에 작성된 일기 매핑 (날짜별 가장 최근 일기)
+      const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthEntries = state.entries.filter(e => e.date.startsWith(monthPrefix));
+      document.getElementById('calendar-month-summary').textContent = `이번 달 ${monthEntries.length}개의 감정이 기록되었어요`;
+
+      const entryByDate = {};
+      monthEntries.forEach(e => {
+        if (!entryByDate[e.date]) entryByDate[e.date] = e;
+      });
+
+      let gridHTML = '';
+      // 빈 칸 채우기
+      for (let i = 0; i < firstDay; i++) {
+        gridHTML += `<div class="h-12"></div>`;
+      }
+
+      // 날짜 칸 렌더링
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${monthPrefix}-${String(day).padStart(2, '0')}`;
+        const entry = entryByDate[dateStr];
+        const isToday = dateStr === todayStr;
+
+        if (entry) {
+          const moodObj = MOODS.find(m => m.id === entry.mood) || MOODS[0];
+          const feelingInfo = getEntryFeelingInfo(entry);
+          gridHTML += `
+            <button onclick="openDetailModal('${entry.id}')" class="h-12 flex flex-col items-center justify-center rounded-xl ${moodObj.bgBadge} hover:scale-105 transition relative group" title="${entry.title} (${feelingInfo.displayLabel})">
+              <div class="w-6 h-6">${moodObj.svg}</div>
+              <div class="flex items-center gap-0.5 mt-0.5">
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${feelingInfo.dotColor};"></span>
+                <span class="text-[9px] text-mood-subtext dark:text-mood-darkSubtext leading-none">${day}</span>
+              </div>
+            </button>
+          `;
+        } else {
+          gridHTML += `
+            <button onclick="startDiaryOnDate('${dateStr}')" class="h-12 flex flex-col items-center justify-center rounded-xl hover:bg-mood-primary/10 transition ${isToday ? 'ring-1 ring-mood-primary font-bold text-mood-primary' : 'text-mood-text/80 dark:text-mood-darkText/80'}">
+              <span class="text-xs">${day}</span>
+            </button>
+          `;
+        }
+      }
+
+      document.getElementById('calendar-grid').innerHTML = gridHTML;
+
+      // 범례 렌더링
+      document.getElementById('calendar-legend').innerHTML = MOODS.map(m => `
+        <span class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg ${m.bgBadge}">
+          <span class="w-3.5 h-3.5 inline-block">${m.svg}</span>
+          <span>${m.label}</span>
+        </span>
+      `).join('');
+    }
+
+    function startDiaryOnDate(dateStr) {
+      resetEditor();
+      document.getElementById('entry-date').value = dateStr;
+      switchTab('editor');
+      showToast(`${dateStr} 일기를 작성합니다`);
+    }
+
+    /**
+     * 7. 타임라인 피드 & 필터링 렌더링
+     */
+    function renderTimelineFilters() {
+      const container = document.getElementById('timeline-filter-chips');
+      const allChip = `
+        <button onclick="setTimelineFilter('all')" id="filter-chip-all" class="px-3 py-1.5 rounded-full text-xs font-medium bg-mood-primary text-white shrink-0 transition">
+          전체 (${state.entries.length})
+        </button>
+      `;
+      const feelingChips = FEELINGS.map(f => `
+        <button onclick="setTimelineFilter('${f.id}')" id="filter-chip-${f.id}" class="px-3 py-1.5 rounded-full text-xs font-medium bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder text-mood-subtext dark:text-mood-darkSubtext shrink-0 flex items-center gap-1 transition">
+          <span class="w-3.5 h-3.5 inline-block">${f.svg}</span>
+          <span>${f.label}</span>
+        </button>
+      `).join('');
+
+      container.innerHTML = allChip + feelingChips;
+    }
+
+    function setTimelineFilter(filterId) {
+      state.timelineFilter = filterId;
+      renderTimelineFilters();
+
+      // 선택된 칩 스타일 강조
+      ['all', ...FEELINGS.map(f => f.id)].forEach(id => {
+        const el = document.getElementById(`filter-chip-${id}`);
+        if (!el) return;
+        if (id === filterId) {
+          el.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-mood-primary text-white shrink-0 flex items-center gap-1 transition';
+        } else {
+          el.className = 'px-3 py-1.5 rounded-full text-xs font-medium bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder text-mood-subtext dark:text-mood-darkSubtext shrink-0 flex items-center gap-1 transition';
+        }
+      });
+
+      renderTimeline();
+    }
+
+    function renderTimeline() {
+      const keyword = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+      const listEl = document.getElementById('timeline-list');
+
+      // 최신 날짜순 정렬
+      const sorted = [...state.entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+
+      const filtered = sorted.filter(entry => {
+        const entryFeeling = entry.feeling || 'happy';
+        const matchFeeling = state.timelineFilter === 'all' || entryFeeling === state.timelineFilter;
+        const feelingInfo = getEntryFeelingInfo(entry);
+        const matchKeyword = !keyword ||
+          entry.title.toLowerCase().includes(keyword) ||
+          entry.content.toLowerCase().includes(keyword) ||
+          feelingInfo.displayLabel.toLowerCase().includes(keyword) ||
+          (entry.caption && entry.caption.toLowerCase().includes(keyword)) ||
+          (entry.music && (entry.music.title.toLowerCase().includes(keyword) || entry.music.artist.toLowerCase().includes(keyword)));
+        return matchFeeling && matchKeyword;
+      });
+
+      // 전체 카운트 갱신
+      const allChip = document.getElementById('filter-chip-all');
+      if (allChip) allChip.textContent = `전체 (${state.entries.length})`;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center py-16 px-4 rounded-2xl bg-paper-card/60 dark:bg-paper-darkCard/60 border border-dashed border-paper-border dark:border-paper-darkBorder">
+            <p class="font-serif text-sm text-mood-subtext dark:text-mood-darkSubtext mb-2">아직 조건에 맞는 기록이 없어요</p>
+            <button onclick="switchTab('editor')" class="mt-2 px-4 py-2 rounded-xl bg-mood-primary text-white text-xs font-medium">첫 일기 쓰러 가기</button>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(entry => {
+        const moodObj = MOODS.find(m => m.id === entry.mood) || MOODS[0];
+        const feelingInfo = getEntryFeelingInfo(entry);
+        const fontClass = `font-style-${entry.font || 'serif'}`;
+        return `
+          <article onclick="openDetailModal('${entry.id}')" class="cursor-pointer rounded-2xl bg-paper-card dark:bg-paper-darkCard border border-paper-border dark:border-paper-darkBorder p-4 shadow-xs hover:shadow-md transition-all">
+            <div class="flex items-center justify-between mb-2.5 gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-7 h-7 p-1 rounded-xl ${moodObj.bgBadge} flex items-center justify-center shrink-0">${moodObj.svg}</span>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-serif font-bold">${formatKoreanDate(entry.date)}</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${feelingInfo.badgeBg}">
+                      ${escapeHTML(feelingInfo.displayLabel)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span class="text-[11px] text-mood-subtext shrink-0">자세히 &rsaquo;</span>
+            </div>
+
+            <h3 class="${fontClass} font-bold text-base mb-1.5 line-clamp-1">${escapeHTML(entry.title)}</h3>
+            <p class="${fontClass} text-sm text-mood-text/85 dark:text-mood-darkText/85 line-clamp-3 whitespace-pre-line leading-relaxed">${escapeHTML(entry.content)}</p>
+
+            ${entry.music ? `
+              <div onclick="event.stopPropagation()" class="mt-3 px-3 py-2 rounded-xl bg-[#00CD3C]/8 border border-[#00CD3C]/25 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <img src="${entry.music.cover}" alt="앨범" class="w-8 h-8 rounded-full object-cover border border-black/15 shrink-0" />
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold truncate">${escapeHTML(entry.music.title)}</p>
+                    <p class="text-[10px] text-mood-subtext truncate">${escapeHTML(entry.music.artist)}</p>
+                  </div>
+                </div>
+                <a href="${entry.music.melonUrl}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-[#00CD3C]/15 text-[#00A832] dark:text-[#2CE661] shrink-0 hover:bg-[#00CD3C]/25 transition">
+                  Melon ↗
+                </a>
+              </div>
+            ` : ''}
+
+            ${entry.photo ? `
+              <div class="mt-3 pt-2 flex items-center gap-3 bg-paper-light/70 dark:bg-paper-dark/50 p-2 rounded-xl border border-paper-border/50 dark:border-paper-darkBorder/50">
+                <img src="${entry.photo}" alt="썸네일" class="w-14 h-14 rounded-lg object-cover shrink-0" />
+                <p class="font-hand text-base text-mood-subtext dark:text-mood-darkSubtext truncate">${escapeHTML(entry.caption || '추억이 담긴 사진 한 장')}</p>
+              </div>
+            ` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+
+    function formatKoreanDate(dateStr) {
+      const [y, m, d] = dateStr.split('-');
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const dayName = days[new Date(Number(y), Number(m) - 1, Number(d)).getDay()];
+      return `${y}.${m}.${d} (${dayName})`;
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    /**
+     * 8. 일기 상세 모달 및 삭제/수정 연결
+     */
+    function openDetailModal(entryId) {
+      const entry = state.entries.find(e => e.id === entryId);
+      if (!entry) return;
+
+      stopAllAudioPreviews();
+      const moodObj = MOODS.find(m => m.id === entry.mood) || MOODS[0];
+      const feelingInfo = getEntryFeelingInfo(entry);
+      const fontClass = `font-style-${entry.font || 'serif'}`;
+
+      document.getElementById('modal-mood-icon').innerHTML = moodObj.svg;
+      document.getElementById('modal-date').textContent = formatKoreanDate(entry.date);
+      const feelingBadge = document.getElementById('modal-feeling-badge');
+      feelingBadge.textContent = feelingInfo.displayLabel;
+      feelingBadge.className = `text-[10px] font-semibold px-2 py-0.5 rounded-full ${feelingInfo.badgeBg}`;
+      document.getElementById('modal-mood-label').textContent = moodObj.desc;
+
+      const titleEl = document.getElementById('modal-title');
+      const contentEl = document.getElementById('modal-content');
+      titleEl.className = `text-xl font-bold leading-snug ${fontClass}`;
+      contentEl.className = `whitespace-pre-wrap leading-relaxed text-[15px] text-mood-text/90 dark:text-mood-darkText/90 ${fontClass}`;
+      titleEl.style.textAlign = entry.align || 'left';
+      contentEl.style.textAlign = entry.align || 'left';
+
+      titleEl.textContent = entry.title;
+      contentEl.textContent = entry.content;
+
+      // 음악 영역 렌더링
+      const musicArea = document.getElementById('modal-music-area');
+      currentModalMusic = entry.music || null;
+      if (entry.music) {
+        document.getElementById('modal-music-cover').src = entry.music.cover;
+        document.getElementById('modal-music-title').textContent = entry.music.title;
+        document.getElementById('modal-music-artist').textContent = entry.music.artist;
+        document.getElementById('modal-music-melon-link').href = entry.music.melonUrl || `https://www.melon.com/search/total/index.htm?q=${encodeURIComponent(entry.music.artist + ' ' + entry.music.title)}`;
+        const audioBtn = document.getElementById('modal-audio-toggle-btn');
+        if (entry.music.previewUrl) {
+          audioBtn.classList.remove('hidden');
+          audioBtn.textContent = '▶ 듣기';
+        } else {
+          audioBtn.classList.add('hidden');
+        }
+        musicArea.classList.remove('hidden');
+      } else {
+        musicArea.classList.add('hidden');
+      }
+
+      const photoArea = document.getElementById('modal-photo-area');
+      if (entry.photo) {
+        document.getElementById('modal-img').src = entry.photo;
+        document.getElementById('modal-caption').textContent = entry.caption || '';
+        photoArea.classList.remove('hidden');
+      } else {
+        photoArea.classList.add('hidden');
+      }
+
+      document.getElementById('modal-edit-btn').onclick = () => loadEntryIntoEditor(entry);
+      document.getElementById('modal-delete-btn').onclick = () => {
+        openConfirmModal('일기 삭제', '이 기록을 정말 삭제할까요? 삭제된 내용은 복구할 수 없습니다.', () => {
+          state.entries = state.entries.filter(e => e.id !== entry.id);
+          saveEntriesToStorage();
+          closeDetailModal();
+          renderCalendar();
+          renderTimeline();
+          showToast('일기가 삭제되었습니다');
+        });
+      };
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      stopAllAudioPreviews();
+      document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    /**
+     * 9. 감성 컬러 테마(8종), 프라이버시(PIN 잠금), JSON 백업/복원
+     */
+    function toggleThemePopover(forceState) {
+      const popover = document.getElementById('theme-popover');
+      if (typeof forceState === 'boolean') {
+        popover.classList.toggle('hidden', !forceState);
+      } else {
+        popover.classList.toggle('hidden');
+      }
+    }
+
+    function applyTheme(themeId, save = true) {
+      const themeObj = THEMES.find(t => t.id === themeId) || THEMES[0];
+      state.settings.theme = themeObj.id;
+      state.settings.darkMode = themeObj.isDark;
+
+      // CSS 변수 일괄 적용
+      const root = document.documentElement;
+      Object.entries(themeObj.vars).forEach(([key, val]) => {
+        root.style.setProperty(key, val);
+      });
+
+      if (themeObj.isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+
+      // 헤더 및 설정 탭 텍스트/점 업데이트
+      const headerDot = document.getElementById('header-theme-dot');
+      const headerName = document.getElementById('header-theme-name');
+      const settingsDesc = document.getElementById('settings-theme-desc');
+      if (headerDot) headerDot.style.backgroundColor = themeObj.swatchPrimary;
+      if (headerName) headerName.textContent = themeObj.name;
+      if (settingsDesc) settingsDesc.textContent = themeObj.desc;
+
+      renderThemeSelectors();
+
+      if (save) {
+        saveSettingsToStorage();
+        showToast(`'${themeObj.name}' 테마가 적용되었습니다`);
+      }
+    }
+
+    function renderThemeSelectors() {
+      const currentId = state.settings.theme || 'ivory';
+      const buildGridHTML = (isPopover) => THEMES.map(t => {
+        const isActive = t.id === currentId;
+        return `
+          <button type="button" onclick="applyTheme('${t.id}'); ${isPopover ? 'toggleThemePopover(false);' : ''}"
+            class="flex items-center gap-2.5 p-2 rounded-xl border text-left transition-all ${
+              isActive
+                ? 'border-mood-primary bg-mood-primary/10 font-bold shadow-2xs'
+                : 'border-paper-border bg-paper-light/60 hover:bg-mood-primary/5 opacity-85 hover:opacity-100'
+            }">
+            <span class="w-5 h-5 rounded-full shrink-0 border border-black/10 flex items-center justify-center shadow-2xs" style="background-color: ${t.swatchBg};">
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${t.swatchPrimary};"></span>
+            </span>
+            <span class="text-xs truncate">${t.name}</span>
+          </button>
+        `;
+      }).join('');
+
+      const popoverGrid = document.getElementById('popover-theme-grid');
+      const settingsGrid = document.getElementById('settings-theme-grid');
+      if (popoverGrid) popoverGrid.innerHTML = buildGridHTML(true);
+      if (settingsGrid) settingsGrid.innerHTML = buildGridHTML(false);
+    }
+
+    function updateSettingsUI() {
+      const pinStatus = document.getElementById('pin-status-text');
+      const pinBtn = document.getElementById('toggle-pin-btn');
+      if (state.settings.pin) {
+        pinStatus.textContent = '4자리 암호 잠금이 활성화되어 있습니다';
+        pinBtn.textContent = '잠금 해제';
+        pinBtn.className = 'px-3.5 py-1.5 rounded-xl bg-rose-500/15 text-rose-500 text-xs font-medium active:scale-95 transition';
+      } else {
+        pinStatus.textContent = '현재 잠금이 해제되어 있습니다';
+        pinBtn.textContent = '설정하기';
+        pinBtn.className = 'px-3.5 py-1.5 rounded-xl bg-mood-primary text-white text-xs font-medium active:scale-95 transition';
+      }
+
+      document.getElementById('stats-count').textContent = `${state.entries.length}개`;
+      const bytes = new Blob([localStorage.getItem(STORAGE_KEYS.ENTRIES) || '']).size;
+      document.getElementById('stats-storage').textContent = `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    // PIN 잠금 화면 제어
+    function handlePinSettingClick() {
+      if (state.settings.pin) {
+        openConfirmModal('암호 잠금 해제', '비밀번호 잠금을 해제하시겠습니까?', () => {
+          state.settings.pin = null;
+          saveSettingsToStorage();
+          showToast('암호 잠금이 해제되었습니다');
+        });
+      } else {
+        openLockScreen('setup');
+      }
+    }
+
+    function openLockScreen(mode) {
+      state.pinSession.mode = mode;
+      state.pinSession.buffer = '';
+      updatePinDotsUI();
+
+      const subtitle = document.getElementById('lock-subtitle');
+      const cancelBtn = document.getElementById('pin-cancel-btn');
+      if (mode === 'setup') {
+        subtitle.textContent = '새로 사용할 4자리 숫자를 입력하세요';
+        cancelBtn.classList.remove('invisible');
+      } else {
+        subtitle.textContent = '나만의 기록을 열기 위해 비밀번호를 입력하세요';
+        cancelBtn.classList.add('invisible');
+      }
+
+      document.getElementById('lock-screen').classList.remove('hidden');
+    }
+
+    function cancelPinSetup() {
+      document.getElementById('lock-screen').classList.add('hidden');
+    }
+
+    function pressPin(digit) {
+      if (state.pinSession.buffer.length >= 4) return;
+      state.pinSession.buffer += digit;
+      updatePinDotsUI();
+
+      if (state.pinSession.buffer.length === 4) {
+        setTimeout(() => {
+          if (state.pinSession.mode === 'setup') {
+            state.settings.pin = state.pinSession.buffer;
+            saveSettingsToStorage();
+            document.getElementById('lock-screen').classList.add('hidden');
+            showToast('4자리 암호 잠금이 설정되었습니다');
+          } else {
+            if (state.pinSession.buffer === state.settings.pin) {
+              document.getElementById('lock-screen').classList.add('hidden');
+            } else {
+              document.getElementById('lock-subtitle').textContent = '비밀번호가 일치하지 않습니다. 다시 시도해주세요';
+              state.pinSession.buffer = '';
+              updatePinDotsUI();
+            }
+          }
+        }, 150);
+      }
+    }
+
+    function deletePin() {
+      state.pinSession.buffer = state.pinSession.buffer.slice(0, -1);
+      updatePinDotsUI();
+    }
+
+    function updatePinDotsUI() {
+      const dots = document.getElementById('pin-dots').children;
+      for (let i = 0; i < 4; i++) {
+        if (i < state.pinSession.buffer.length) {
+          dots[i].classList.add('bg-mood-primary', 'scale-110');
+        } else {
+          dots[i].classList.remove('bg-mood-primary', 'scale-110');
+        }
+      }
+    }
+
+    // JSON 백업 내보내기 & 불러오기
+    function exportDiaryJSON() {
+      const backupPayload = {
+        app: 'MoodLog',
+        exportedAt: new Date().toISOString(),
+        entries: state.entries
+      };
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `MoodLog_Backup_${getTodayDateString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('일기 백업 파일이 다운로드되었습니다');
+    }
+
+    function importDiaryJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const importedEntries = Array.isArray(parsed) ? parsed : parsed.entries;
+          if (!Array.isArray(importedEntries)) throw new Error('Invalid format');
+
+          openConfirmModal(
+            '백업 파일 복원',
+            `파일에서 ${importedEntries.length}개의 일기를 찾았습니다. 기존 일기와 합쳐서 복원할까요?`,
+            () => {
+              const existingIds = new Set(state.entries.map(item => item.id));
+              let addedCount = 0;
+              importedEntries.forEach(item => {
+                if (item && item.date && !existingIds.has(item.id)) {
+                  state.entries.push(item);
+                  addedCount++;
+                }
+              });
+              saveEntriesToStorage();
+              renderCalendar();
+              renderTimeline();
+              showToast(`${addedCount}개의 새로운 일기를 복원했습니다`);
+            }
+          );
+        } catch (err) {
+          showToast('올바른 무드로그 백업 JSON 파일이 아닙니다');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    /**
+     * 10. 커스텀 알림 & 토스트 유틸리티
+     */
+    function openConfirmModal(title, desc, onConfirm) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-desc').textContent = desc;
+      const okBtn = document.getElementById('confirm-ok-btn');
+      okBtn.onclick = () => {
+        closeConfirmModal();
+        onConfirm();
+      };
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirm-modal').classList.add('hidden');
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2400);
+    }
+  </script>
+</body>
+</html>
